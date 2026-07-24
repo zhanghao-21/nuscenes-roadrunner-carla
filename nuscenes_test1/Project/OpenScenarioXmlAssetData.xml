@@ -1,0 +1,171 @@
+<OpenScenarioXmlAssetData>
+<Vehicles>
+	<Vehicle>
+		<ExportCatalogEntryName>Ambulance</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Ambulance</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/Ambulance.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>Backhoe</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Backhoe</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/Backhoe.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>CementTruck</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>CementTruck</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/CementTruck.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>CompactCar</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>CompactCar</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/CompactCar.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>DeliveryVan</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>DeliveryVan</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/DeliveryVan.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>GarbageTruck</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>GarbageTruck</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/GarbageTruck.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>PickupTruck</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>PickupTruck</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/PickupTruck.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>SchoolBus</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>SchoolBus</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/SchoolBus.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>Sedan</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Sedan</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/Sedan.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>SemiTruck</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>SemiTruck</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/SemiTruck.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>SemiTruck_Trailer01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>SemiTruck_Trailer01</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/SemiTruck_Trailer01.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>SemiTruck_Trailer02</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>SemiTruck_Trailer02</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/SemiTruck_Trailer02.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>SemiTruck_Trailer03</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>SemiTruck_Trailer03</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/SemiTruck_Trailer03.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>SemiTruck_Trailer04</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>SemiTruck_Trailer04</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/SemiTruck_Trailer04.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>Suv</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Suv</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/Suv.fbx</FilePath>
+	</Vehicle>
+	<Vehicle>
+		<ExportCatalogEntryName>UtilityTruck</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>UtilityTruck</ReferenceCatalogEntryName>
+		<FilePath>Vehicles/UtilityTruck.fbx</FilePath>
+	</Vehicle>
+</Vehicles>
+<Pedestrians>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Female Business01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Female Business01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Female Business01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Female Casual01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Female Casual01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Female Casual01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Female Elder01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Female Elder01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Female Elder01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Male Business01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Male Business01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Male Business01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Male Casual01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Male Casual01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Male Casual01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Male Child01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Male Child01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Male Child01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen Male Elder01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen Male Elder01</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen Male Elder01.rrchar</FilePath>
+	</Pedestrian>
+	<Pedestrian>
+		<ExportCatalogEntryName>Citizen_Male</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Citizen_Male</ReferenceCatalogEntryName>
+		<FilePath>Characters/Citizen_Male.rrchar</FilePath>
+	</Pedestrian>
+</Pedestrians>
+<MiscObjects>
+	<MiscObject>
+		<ExportCatalogEntryName>Rock01</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Rock01</ReferenceCatalogEntryName>
+		<FilePath>Props/Misc/Rock01.fbx</FilePath>
+	</MiscObject>
+	<MiscObject>
+		<ExportCatalogEntryName>Rock02</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Rock02</ReferenceCatalogEntryName>
+		<FilePath>Props/Misc/Rock02.fbx</FilePath>
+	</MiscObject>
+	<MiscObject>
+		<ExportCatalogEntryName>Rock03</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Rock03</ReferenceCatalogEntryName>
+		<FilePath>Props/Misc/Rock03.fbx</FilePath>
+	</MiscObject>
+	<MiscObject>
+		<ExportCatalogEntryName>Rock04</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Rock04</ReferenceCatalogEntryName>
+		<FilePath>Props/Misc/Rock04.fbx</FilePath>
+	</MiscObject>
+	<MiscObject>
+		<ExportCatalogEntryName>Wall</ExportCatalogEntryName>
+		<ReferenceCatalogEntryName>Wall</ReferenceCatalogEntryName>
+		<FilePath>Props/Misc/Wall.fbx</FilePath>
+	</MiscObject>
+</MiscObjects>
+<Controllers>
+	<Controller>	
+		<ReferenceCatalogEntryName>BuiltInBehaviorParameters</ReferenceCatalogEntryName>
+		<FilePath>Behaviors/BuiltInBehaviorParameters.rrbehavior</FilePath>
+	</Controller>
+	<Controller>
+		<ReferenceCatalogEntryName>CARLA</ReferenceCatalogEntryName>
+		<FilePath>Behaviors/CARLA.rrbehavior</FilePath>
+	</Controller>
+	<Controller>
+		<ReferenceCatalogEntryName>Example Behavior</ReferenceCatalogEntryName>
+		<FilePath>Behaviors/Example.rrbehavior</FilePath>
+	</Controller>
+	<Controller>
+		<ReferenceCatalogEntryName>Example_rrparameters</ReferenceCatalogEntryName>
+		<FilePath>Behaviors/Example.rrparameters</FilePath>
+	</Controller>
+</Controllers>
+</OpenScenarioXmlAssetData>

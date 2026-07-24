@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<ExportConfigurations>
+   <!-- CarMaker 14 Export configuation -->
+  <Configuration name="CarMaker" zip="false" extension="xosc">
+	<Format name="OpenSCENARIO XML" extension="xosc">
+	 <Option name="NoOpsActionType" value="2" type="double"/> <!-- NoOpsActionType mapping:  0 = UserDefinedAction  1 = Empty Action  2 = Empty PrivateAction -->
+	 <Option name="MoveNiiActions" value="true" type="bool"/> <!-- MoveNiiActions mapping:  true = checked false =  unchecked -->
+	 <Option name="RelocateVehicleOrigin" value="true" type="bool"/> <!-- RelocateVehicleOrigin mapping:  true = checked false =  unchecked -->
+	 <Option name="SceneGraphExportType" value="0" type="double"/> <!-- SceneGraphExportType mapping: 2 = Export new, 1 = Reference existing, 0 = None -->
+	 <Option name="ActorMeshExportType" value="0" type="double"/> <!-- ActorMeshExportType mapping: 0 = Export new, 1 = Reference existing-->
+	 <Option name="MeshFormat" value="0" type="double"/> <!-- MeshFormat mapping: 0 = Gltf, 1 = fbx, 2 = osgb-->
+    </Format>
+	<Format name="gltf" extension="gltf">
+	 <Option name="EmbedTextures" value="true" type="bool"/> <!-- RelocateVehicleOrigin mapping:  true = checked false =  unchecked -->
+	 <Option name="StripLods" value="true" type="bool"/> <!-- RelocateVehicleOrigin mapping:  true = checked false =  unchecked -->
+	 <Option name="UpAxisSetting" value="4" type="double"/> <!-- UpAxisSetting mapping:  0 = +Y, 1 = -Y, 2 = +X, 3 = -X, 4 = +Z, 5 = -Z -->
+	 <Option name="FrontAxisSetting" value="3" type="double"/> <!-- FrontAxisSetting mapping:  0 = +Y, 1 = -Y, 2 = +X, 3 = -X, 4 = +Z, 5 = -Z -->
+	</Format>
+  </Configuration>
+  <!-- CARLA 0.9.15 Export configuation -->
+  <!-- Export order need not be changed, it may lead incosistent results in simulator -->
+  <Configuration name="CARLA Scenario" zip="false" extension="xosc">
+	<Format name="OpenSCENARIO XML" extension="xosc">
+	 <Option name="Version" value="0" type="double"/> <!-- Version mapping:  0 = 1.0  1 = 1.1  2 = 1.2   3 = 1.3 -->
+	 <Option name="NoOpsActionType" value="1" type="double"/> <!-- NoOpsActionType mapping:  0 = UserDefinedAction  1 = Empty Action  2 = Empty PrivateAction -->
+	 <Option name="PositionType" value="1" type="double"/> <!-- NoOpsActionType mapping:  0 = LanePosition,  1 = WorldPosition,  2 = RoadPosition -->
+	 <Option name="MoveNiiActions" value="true" type="bool"/> <!-- MoveNiiActions mapping:  true = checked false =  unchecked -->
+	 <Option name="ReplaceRunningState" value="true" type="bool"/> <!-- ReplaceRunningState mapping:  true = checked false =  unchecked -->
+	 <Option name="ExportEnvironmentAction" value="true" type="bool"/> <!-- ExportEnvironmentAction mapping:  true = checked false =  unchecked -->
+	</Format>
+	<Format name="CARLA" extension="udatasmith">
+	 <Option name="SplitBySegmentation" value="true" type="bool"/> <!-- SplitBySegmentation mapping:  true = checked, false =  unchecked -->
+	 <Option name="StripLods" value="true" type="bool"/> <!-- StripLods mapping:  true = checked, false =  unchecked -->
+	</Format>
+  </Configuration>
+</ExportConfigurations>

@@ -1,0 +1,381 @@
+<HEREAssetData>
+  <Poles>
+    <Pole>
+      <Type>Utility</Type>
+      <Diameter>0.27</Diameter>
+      <FilePath>Props/ElectricPoles/UtilityPole_60ft.fbx_rrx</FilePath>
+    </Pole>
+    <Pole>
+      <Type>DELINEATOR</Type>
+      <Diameter>0.27</Diameter>
+      <FilePath>Props/TrafficControl/Grabber01.fbx_rrx</FilePath>
+    </Pole>
+    <Pole>
+      <Type>DEPRECATED_LEITPFOSTEN</Type>
+      <Diameter>0.27</Diameter>
+      <FilePath>Props/TrafficControl/Leitpfosten01.fbx_rrx</FilePath>
+    </Pole>
+    <Pole>
+      <Type>LIGHT</Type>
+      <Diameter>0.17</Diameter>
+      <FilePath>Props/Signals/StreetLight_30ft.rrpa</FilePath>
+    </Pole>
+    <Pole>
+      <Type>LIGHT</Type>
+      <Diameter>0.27</Diameter>
+      <FilePath>Props/Signals/StreetLight_30ft.rrpa</FilePath>
+    </Pole>
+    <Pole>
+      <Type>GANTRY</Type>
+      <Diameter>0.27</Diameter>
+      <FilePath>Props/Signals/Signal_Post_30ft.fbx</FilePath>
+    </Pole>
+  </Poles>
+  <Barriers>
+    <Barrier>
+      <Type>JERSEY_BARRIER</Type>
+      <FilePath>Extrusions/JerseyBarrier.rrext</FilePath>
+    </Barrier>
+    <Barrier>
+      <Type>GUARDRAIL</Type>
+      <FilePath>Extrusions/GuardRail.rrext</FilePath>
+    </Barrier>
+    <Barrier>
+      <Type>WALL</Type>
+      <FilePath>Extrusions/HighwayBorderwall02.rrext</FilePath>
+    </Barrier>
+    <Barrier>
+      <Type>WALL_SHORT</Type>
+      <FilePath>Extrusions/HighwayBorderwall03.rrext</FilePath>
+    </Barrier>
+    <Barrier>
+      <Type>FENCE</Type>
+      <FilePath>Extrusions/Fence.rrext</FilePath>
+    </Barrier>
+  </Barriers>
+  <Signs>
+    <Sign>
+      <Type>ADVISORY_SPEED_LIMIT</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>YELLOW</Color>
+      <FilePath>Signs/US/Warning Signs/AdvisoryExitSpeed_25_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>ADVISORY_SPEED_LIMIT</Type>
+      <Shape>DIAMOND</Shape>
+      <Value>25</Value>
+      <Color>YELLOW</Color>
+      <FilePath>Signs/US/Warning Signs/Turn_AdvisorySpeed25_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>ADVISORY_SPEED_LIMIT</Type>
+      <Shape>RECTANGLE</Shape>
+      <Value>30</Value>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Warning Signs/AdvisoryRampSpeed_30_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>5</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_5_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>10</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_10_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>15</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_15_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>20</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_20_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>25</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_25_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>30</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>35</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>40</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>45</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>50</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>55</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>60</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>65</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>70</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_70_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>75</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_75_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Value>80</Value>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_80_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SPEED_LIMIT</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>DO_NOT_ENTER</Type>
+      <Shape>CIRCLE</Shape>
+      <Color>RED</Color>
+      <FilePath>Signs/US/Regulatory Signs/DoNotEnter_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>NO_OVERTAKING</Type>
+      <Shape>CIRCLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/DoNotPass_US_01.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>STOP</Type>
+      <Shape>OCTAGON</Shape>
+      <Color>RED</Color>
+      <FilePath>Signs/US/Regulatory Signs/Stop_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>NO_ACCESS</Type>
+      <Shape>CIRCLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/DoNotPass_US_01.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>YIELD</Type>
+      <Shape>TRIANGLE</Shape>
+      <Color>RED</Color>
+      <FilePath>Signs/US/Regulatory Signs/Yield_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>WARNING</Type>
+      <Shape>DIAMOND</Shape>
+      <Color>YELLOW</Color>
+      <FilePath>Signs/US/YellowPanel_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>YIELD</Type>
+      <Shape>TRIANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/Regulatory Signs/Yield_US.svg</FilePath>
+    </Sign>
+    <Sign>
+      <Type>END_SPEED_LIMIT</Type>
+      <Shape>RECTANGLE</Shape>
+      <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>OTHER</Type>
+      <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SIGN_CLASSIFICATION_TYPE_OTHER</Type>
+      <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SIGN_CLASSIFICATION_TYPE_OTHER</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>GREEN</Color>
+      <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SIGN_CLASSIFICATION_TYPE_OTHER</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>BLUE</Color>
+      <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SIGN_CLASSIFICATION_TYPE_OTHER</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>YELLOW</Color>
+      <FilePath>Signs/US/Yellow_Blank_US.svg_rrx</FilePath>
+    </Sign>
+    <Sign>
+      <Type>SIGN_CLASSIFICATION_TYPE_OTHER</Type>
+      <Shape>RECTANGLE</Shape>
+      <Color>WHITE</Color>
+      <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+    </Sign>
+  </Signs>
+  <Markings>
+    <Marking>
+      <MarkingElements>SOLID</MarkingElements>
+      <Color>WHITE</Color>
+      <FilePath>Markings/SolidSingleWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>SOLID</MarkingElements>
+      <Color>YELLOW</Color>
+      <FilePath>Markings/SolidSingleYellow.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>DASHED</MarkingElements>
+      <Color>WHITE</Color>
+      <FilePath>Markings/DashedSingleWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>DASHED</MarkingElements>
+      <Color>YELLOW</Color>
+      <FilePath>Markings/DashedSingleYellow.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>ALTERNATE_DASHED</MarkingElements>
+      <Color>WHITE</Color>
+      <FilePath>Markings/DashedShortSingleWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>ALTERNATE_DASHED</MarkingElements>
+      <Color>YELLOW</Color>
+      <FilePath>Markings/DashedShortSingleYellow.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>SOLID SOLID</MarkingElements>
+      <Color>WHITE</Color>
+      <FilePath>Markings/SolidDoubleWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>SOLID SOLID</MarkingElements>
+      <Color>YELLOW</Color>
+      <FilePath>Markings/SolidDoubleYellow.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>DASHED DASHED</MarkingElements>
+      <Color>WHITE</Color>
+      <FilePath>Markings/DashedDoubleWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>DASHED DASHED</MarkingElements>
+      <Color>YELLOW</Color>
+      <FilePath>Markings/DashedDoubleYellow.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>DASHED SOLID</MarkingElements>
+      <Color>WHITE</Color>
+      <FilePath>Markings/DashedSolidWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>DASHED SOLID</MarkingElements>
+      <Color>YELLOW</Color>
+      <FilePath>Markings/DashedSolidYellow.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>SOLID DASHED</MarkingElements>
+      <Color>WHITE</Color>
+      <Reverse>true</Reverse>
+      <FilePath>Markings/DashedSolidWhite.rrlms</FilePath>
+    </Marking>
+    <Marking>
+      <MarkingElements>SOLID DASHED</MarkingElements>
+      <Color>YELLOW</Color>
+      <Reverse>true</Reverse>
+      <FilePath>Markings/DashedSolidYellow.rrlms</FilePath>
+    </Marking>
+  </Markings>
+  <RoadTypes>
+    <RoadType>
+      <FunctionalClass>FC_1</FunctionalClass>
+      <RRType>motorway</RRType>
+    </RoadType>
+    <RoadType>
+      <FunctionalClass>FC_2</FunctionalClass>
+      <RRType>town</RRType>
+    </RoadType>
+    <RoadType>
+      <FunctionalClass>FC_3</FunctionalClass>
+      <RRType>rural</RRType>
+    </RoadType>
+    <RoadType>
+      <FunctionalClass>FC_4</FunctionalClass>
+      <RRType>lowSpeed</RRType>
+    </RoadType>
+    <RoadType>
+      <FunctionalClass>FC_5</FunctionalClass>
+      <RRType>lowSpeed</RRType>
+    </RoadType>
+    <RoadType>
+      <FunctionalClass>unknown</FunctionalClass>
+      <RRType>unknown</RRType>
+    </RoadType>
+  </RoadTypes>
+</HEREAssetData>

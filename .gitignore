@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# Local datasets
+# Download or share these separately; do not store multi-GB nuScenes data in Git.
+/v1.0-mini/
+
+# ---------------------------------------------------------------------------
+# Generated pipeline outputs
+/OUTPUT/
+/output_roadrunner/
+/nuscenes2xodr/output/
+/replay_geo/results/
+/viz/
+
+# Generated full-map artifacts (keep the MATLAB source files).
+/fullmap/*.mat
+/fullmap/*.osm
+/fullmap/*.rrhd
+/fullmap/*.xodr
+/fullmap/*_meta.json
+
+# ---------------------------------------------------------------------------
+# Generated and heavyweight RoadRunner content
+# Keep nuscenes_test1/Project so collaborators share project configuration.
+/nuscenes_test1/Assets/
+/nuscenes_test1/Exports/
+/nuscenes_test1/Scenes/
+/nuscenes_test1/Scenarios/
+
+# ---------------------------------------------------------------------------
+# Generated reports (keep the .tex and report-generation source code).
+/progress_report/*.pdf
+/progress_report/*.pptx
+
+# ---------------------------------------------------------------------------
+# Python, notebooks, and test/tool caches
+**/__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Conda/virtual environments
+.conda/
+.venv/
+venv/
+env/
+
+# MATLAB generated files
+*.asv
+*.autosave
+slprj/
+codegen/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+~$*

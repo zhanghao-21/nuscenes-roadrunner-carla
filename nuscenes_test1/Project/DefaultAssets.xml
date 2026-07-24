@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DefaultAssets>
+    <Default name="Island Curb Material" path="Assets/Materials/Concrete1.rrmtl"/>
+    <Default name="Blank Sign" path="Assets/Signs/US/White_Blank_US.svg"/>
+    <Default name="Blank Warning Sign" path="Assets/Signs/US/Yellow_Blank_US.svg"/>
+    <Default name="Surface Material" path="Assets/Materials/Grass1.rrmtl"/>
+    <Default name="Crosswalk" path="Assets/Markings/SimpleCrosswalk.rrcws"/>
+    <Default name="Stop Line" path="Assets/Markings/StopLine.rrlms"/>
+    <Default name="Parking Space Marking" path="Assets/Markings/SolidSingleWhite.rrlms"/>
+    <Default name="Road Surface Material" path="Assets/Materials/Asphalt1.rrmtl"/>
+    <Default name="Sidewalk Material" path="Assets/Materials/Concrete1.rrmtl"/>
+    <Default name="Median Material" path="Assets/Materials/Concrete1.rrmtl"/>
+    <Default name="Road Center Marking" path="Assets/Markings/SolidDoubleYellow.rrlms"/>
+    <Default name="One Way Passing Marking" path="Assets/Markings/DashedSolidYellow.rrlms"/>
+    <Default name="Dashed Road Marking" path="Assets/Markings/DashedSingleWhite.rrlms"/>
+    <Default name="Road Outer Boundary Marking" path="Assets/Markings/SolidSingleWhite.rrlms"/>
+    <Default name="Road Inner Boundary Marking" path="Assets/Markings/SolidSingleYellow.rrlms"/>
+    <Default name="Bridge/Tunnel Material" path="Assets/Materials/Concrete1.rrmtl"/>
+    <Default name="Vehicle" path="Assets/Vehicles/Sedan.fbx"/>
+    <Default name="Scenario Folder" path="Assets/Vehicles"/>
+</DefaultAssets>

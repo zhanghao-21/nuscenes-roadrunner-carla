@@ -1,0 +1,14 @@
+# Conda env for the CARLA 0.9.15 *client* (Python 3.7 — required by the bundled wheel).
+# Create with:
+#   conda env create -f environment_carla37.yml
+#   conda activate carla915
+#   pip install D:/research/nuscenes_carla/carla_0.9.15/PythonAPI/carla/dist/carla-0.9.15-cp37-cp37m-win_amd64.whl
+name: carla915
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7
+  - numpy
+  - pip
+  - pip:
+      - pygame

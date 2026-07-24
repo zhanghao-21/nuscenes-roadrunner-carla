@@ -1,0 +1,1559 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TomTomAssetData>
+   <LaneTypes>
+      <LaneType>
+         <Type>NON_DRIVABLE_LANE</Type>
+         <RRType>None</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>DRIVABLE_LANE</Type>
+         <RRType>Driving</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>PARKING_LANE</Type>
+         <RRType>Parking</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>BICYLCE_LANE</Type>
+         <RRType>Biking</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>EMERGENCY_LANE</Type>
+         <RRType>Shoulder</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>BUS_LANE</Type>
+         <RRType>Driving</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>HOV_LANE</Type>
+         <RRType>Driving</RRType>
+         </LaneType>
+      <LaneType>
+         <Type>RESTRICTED_LANE</Type>
+         <RRType>Driving</RRType>
+         </LaneType>
+      </LaneTypes>
+   <Markings>
+      <LaneMark>
+         <Type>SHORT_DASHED_LINE</Type>
+         <Color>WHITE</Color>
+         <FilePath>Markings/DashedShortSingleWhite.rrlms</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>SHORT_DASHED_LINE</Type>
+         <Color>YELLOW</Color>
+         <FilePath>Markings/DashedShortSingleYellow.rrlms</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>LONG_DASHED_LINE</Type>
+         <Color>WHITE</Color>
+         <FilePath>Markings/DashedSingleWhite.rrlms</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>LONG_DASHED_LINE</Type>
+         <Color>YELLOW</Color>
+         <FilePath>Markings/DashedSingleYellow.rrlms</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>SINGLE_SOLID_LINE</Type>
+         <Color>WHITE</Color>
+         <FilePath>Markings/SolidSingleWhite.rrlms</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>SINGLE_SOLID_LINE</Type>
+         <Color>YELLOW</Color>
+         <FilePath>Markings/SolidSingleYellow.rrlms</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>GUARDRAIL</Type>
+         <Color>UNDEFINED</Color>
+         <FilePath>Extrusions/GuardRail.rrext</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>FENCE</Type>
+         <Color>UNDEFINED</Color>
+         <FilePath>Extrusions/Fence.rrext</FilePath>
+         </LaneMark>
+      <LaneMark>
+         <Type>BARRIER_JERSEY</Type>
+         <Color>UNDEFINED</Color>
+         <FilePath>Extrusions/JerseyBarrier.rrext</FilePath>
+         </LaneMark>
+      </Markings>
+   <Signs>
+      <TrafficSign>
+         <Type>Cancellation</Type>
+         <SubType>Cancellation</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Cul de sac</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/DeadEnd_US_02.svg_rrx</FilePath>
+         </TrafficSign>
+	  <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Cyclist crossing</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+	  <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>End road work</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Express road end</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/ExpresswayEnds_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Express road start</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Highway end</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/DividedHighwayEnds_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Highway start</SubType>
+         <Shape>directional-arrow;rectangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/DividedHighway_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>One Way</SubType>
+         <Shape>circle;directional-arrow;octagon;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/OneWay_L_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>5.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_5_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>10.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_10_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>15.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_15_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>20.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_20_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>25.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_25_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>30.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>35.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>40.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>45.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>50.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>55.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>60.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>65.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>70.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_70_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>75.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_75_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>rectangle</Shape>
+         <Value>80.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_80_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Other</SubType>
+         <Shape>circle;diamond;directional-arrow;pennant;pentagon;rectangle;shield;trapezoid;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Parking</SubType>
+         <Shape>directional-arrow;rectangle</Shape>
+         <FilePath>Signs/US/Destination Signs/ParkingArea_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Truck route</SubType>
+         <Shape>directional-arrow;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/TruckRoute_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>U Turn Allowed</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/Uturn_DiagonalArrow_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>5.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_5_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>10.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_10_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>15.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_15_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>20.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_20_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>25.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_25_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>30.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>35.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>40.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>45.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>50.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>55.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>60.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>65.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>70.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_70_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>75.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_75_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>rectangle</Shape>
+         <Value>80.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_80_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle;diamond;directional-arrow;rectangle;shield;triangle-down</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>InformationSign</Type>
+         <SubType>Zebra crossing</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>Lane added left</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/AddedLane_R_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>Lane added right</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/AddedLane_R_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>Lane ends left</SubType>
+         <Shape>diamond;rectangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/LaneEnds_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>Lane ends right</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/LaneEnds_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+	  <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>Lane merge</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/RoadNarrows_US_02.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>Lane ends</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>LaneInformation</Type>
+         <SubType>LaneInformation</SubType>
+         <Shape>circle;diamond;directional-arrow;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Mandatory</Type>
+         <SubType>Maneuver</SubType>
+         <Shape>circle;directional-arrow;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Mandatory</Type>
+         <SubType>Other</SubType>
+         <Shape>circle;directional-arrow;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+	  <TrafficSign>
+         <Type>Mandatory</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Name</Type>
+         <SubType>Brunnel Name</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Name</Type>
+         <SubType>River Name</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Name</Type>
+         <SubType>Street Name</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Cancellation</SubType>
+         <Shape>circle;triangle</Shape>
+         <FilePath>Signs/UK/NoOvertaking_UK.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>20.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_20_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>30.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_30_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>40.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_40_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>50.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_50_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>60.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_60_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>70.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_70_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <FilePath>Signs/UK/Prohibited_AllVehicles_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Overtaking</Type>
+         <SubType>Start</SubType>
+         <Shape>circle;rectangle;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>OvertakingLane</Type>
+         <SubType>Overtaking lane</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>POI</Type>
+         <SubType>POI</SubType>
+         <Shape>circle;directional-arrow;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Priority</Type>
+         <SubType>Priority Road Cancellation</SubType>
+         <Shape>diamond;pentagon;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Priority</Type>
+         <SubType>Priority Road</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Hazardous Material</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Lane Dependent Maximum Dimension</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Maximum Dimension</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No Entry</SubType>
+         <Shape>circle;directional-arrow;octagon;rectangle;shield</Shape>
+         <FilePath>Signs/US/Regulatory Signs/DoNotEnter_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No Stopping</SubType>
+         <Shape>circle;rectangle;</Shape>
+         <FilePath>Signs/US/Regulatory Signs/NoStopping_OnPavement_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No Turn Left</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/NoLeftTurn_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No Turn Right</SubType>
+         <Shape>circle;diamond;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/NoRightTurn_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No U Turn</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/NoUTurns_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No parking</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/NoParking_AnyTime_US_02.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No pedestrians</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/NoParking_US_02.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No waiting</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>No way</SubType>
+         <Shape>circle;rectangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/NoOutlet_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Other</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>20.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_20_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>30.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_30_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>40.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_40_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>50.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_50_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>60.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_60_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>70.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_70_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <FilePath>Signs/UK/Prohibited_AllVehicles_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>circle;rectangle;shield</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Prohibition</Type>
+         <SubType>Vehicle Restriction</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/UK/Prohibited_AllVehicles_UK.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>RNR</Type>
+         <SubType>RNR</SubType>
+         <Shape>circle;directional-arrow;pentagon;rectangle;shield;triangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/RailRoadCrossing_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>RailwayCrossing</Type>
+         <SubType>Guarded warning</SubType>
+         <Shape>circle;diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/RailroadCrossing_Warning_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>30.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>35.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>40.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>45.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>50.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>55.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>60.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>65.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>70.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_70_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>75.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_75_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>rectangle</Shape>
+         <Value>80.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_80_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SignPost</Type>
+         <SubType>Sign Post</SubType>
+         <Shape>circle;diamond;directional-arrow;rectangle;triangle-down</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>BUA Cancellation</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>BUA</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Lane Dependent Speed</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>30.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>35.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>40.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>45.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>50.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>55.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>60.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>65.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Minimum Speed</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>5.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_5_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>10.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_10_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>15.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_15_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>20.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_20_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>25.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_25_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>30.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>35.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>40.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>45.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>50.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>55.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>60.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>65.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>70.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_70_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>75.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_75_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>80.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_80_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Recommended Speed</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>20.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_20_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>30.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_30_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>40.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_40_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>50.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_50_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>60.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_60_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>70.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_70_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <FilePath>Signs/UK/Prohibited_AllVehicles_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed Cancellation</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>5.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_5_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>10.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_10_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>15.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_15_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>20.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_20_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>25.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_25_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>30.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_30_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>35.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_35_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>40.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_40_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>45.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_45_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>50.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_50_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>55.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_55_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>60.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_60_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>65.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_65_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>70.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_70_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>75.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_75_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>rectangle</Shape>
+         <Value>80.0</Value>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_80_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>20.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_20_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>30.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_30_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>40.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_40_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>50.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_50_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>60.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_60_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <Value>70.0</Value>
+         <FilePath>Signs/UK/MaxSpeedLimit_70_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>circle</Shape>
+         <Color>red;white</Color>
+         <FilePath>Signs/UK/Prohibited_AllVehicles_UK.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Speed</SubType>
+         <Shape>directional-arrow;octagon;rectangle;triangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+	  <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Residential Area</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Zone Cancellation</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>SpeedRestriction</Type>
+         <SubType>Zone</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Stop</Type>
+         <SubType>Stop sign</SubType>
+         <Shape>circle;octagon;rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/Stop_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>TollRoad</Type>
+         <SubType>Toll</SubType>
+         <Shape>circle;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Variable</Type>
+         <SubType>Variable traffic sign</SubType>
+         <Shape>rectangle;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Accident hazard</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Aircraft</SubType>
+         <Shape>triangle</Shape>
+         <FilePath>Signs/US/Information Signs/Airport_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Animal crossing</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/Bear.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Children</SubType>
+         <Shape>diamond;pentagon;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Congestion hazard</SubType>
+         <Shape>rectangle;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Cross wind</SubType>
+         <Shape>rectangle;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Cyclist</SubType>
+         <Shape>triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Dead end</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/DeadEnd_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Divided highway end</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/DividedHighwayEnds_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Divided road end</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/DividedHighwayEnds_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Divided road start</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/DividedHighway_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Falling rocks</SubType>
+         <Shape>diamond;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/FallenRocks_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>General danger</SubType>
+         <Shape>rectangle;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Icy conditions</SubType>
+         <Shape>diamond;pentagon;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/Ice_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Intersection with priority to the right</SubType>
+         <Shape>triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Intersection</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Loose gravel</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/LooseGravel_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Maximum Dimension</SubType>
+         <Shape>circle;diamond;rectangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Other</SubType>
+         <Shape>diamond;directional-arrow;rectangle;triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Pedestrian crossing</SubType>
+         <Shape>diamond;rectangle;triangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/PedCrosswalk_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Pedestrians</SubType>
+         <Shape>diamond;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/Pedestrian_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Priority Road</SubType>
+         <Shape>diamond;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Road Works</SubType>
+         <Shape>diamond;rectangle;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/RoadWork_Ahead_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Road branch</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Road narrows left</SubType>
+         <Shape>rectangle;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/PathNarrows_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Road narrows right</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/PathNarrows_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Road narrows</SubType>
+         <Shape>triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/RoadNarrows_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Roundabout</SubType>
+         <Shape>diamond;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/Intersection_Roundabout_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Sharp curve left</SubType>
+         <Shape>circle;diamond;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/Curve_Left_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Sharp curve right</SubType>
+         <Shape>diamond;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/Curve_Right_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Slippery road</SubType>
+         <Shape>diamond;pentagon;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/SlipperyWhenWet_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Speed bump</SubType>
+         <Shape>triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/Bump_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Speed limit warning No Value</SubType>
+         <Shape>rectangle</Shape>
+         <FilePath>Signs/US/Regulatory Signs/SpeedLimit_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Speed limit warning</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/AdvisorySpeed_Blank_US_03.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Steep hill down</SubType>
+         <Shape>circle;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/Hill_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Stop ahead</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/StopAhead_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Traffic Lights</SubType>
+         <Shape>diamond;pentagon;rectangle;shield;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Warning Signs/SignalAhead_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Trucks</SubType>
+         <Shape>diamond</Shape>
+         <FilePath>Signs/US/Warning Signs/Truck_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Two Way Traffic</SubType>
+         <Shape>diamond;rectangle;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/TwoWayTraffic_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Uneven road</SubType>
+         <Shape>rectangle;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/UnevenLanes_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Unreadable</SubType>
+         <Shape>diamond;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Wild life</SubType>
+         <Shape>diamond;rectangle;triangle;triangle-down</Shape>
+         <FilePath>Signs/UK/WildAnimals_UK.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Winding road starting left</SubType>
+         <Shape>diamond;rectangle;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/WindingRoad_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Winding road starting right</SubType>
+         <Shape>diamond;triangle</Shape>
+         <FilePath>Signs/US/Warning Signs/WindingRoad_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Yield ahead</SubType>
+         <Shape>diamond;rectangle</Shape>
+         <FilePath>Signs/US/Warning Signs/YieldAhead_US_01.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Yield the right-of-way</SubType>
+         <Shape>triangle</Shape>
+         <FilePath>Signs/US/White_Blank_US.svg_rrx</FilePath>
+         </TrafficSign>
+      <TrafficSign>
+         <Type>Warning</Type>
+         <SubType>Yield</SubType>
+         <Shape>circle;diamond;directional-arrow;pennant;rectangle;trapezoid;triangle;triangle-down</Shape>
+         <FilePath>Signs/US/Regulatory Signs/Yield_US.svg_rrx</FilePath>
+         </TrafficSign>
+      </Signs>
+   </TomTomAssetData>

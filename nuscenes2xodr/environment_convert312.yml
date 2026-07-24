@@ -1,0 +1,14 @@
+# Conda env for the nuScenes -> OpenDRIVE *converter* (Python 3.12).
+# CARLA is NOT needed here. Create with:
+#   conda env create -f environment_convert312.yml
+#   conda activate nusc2xodr
+name: nusc2xodr
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - shapely
+  - pip
+  - pip:
+      - nuscenes-devkit

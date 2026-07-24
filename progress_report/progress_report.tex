@@ -1,0 +1,811 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\emergencystretch=3em
+
+\definecolor{codegray}{gray}{0.94}
+\newcommand{\code}[1]{{\setlength{\fboxsep}{1.5pt}\colorbox{codegray}{\small\texttt{#1}}}}
+\newcommand{\file}[1]{\texttt{#1}}
+
+\setlist{itemsep=2pt, topsep=4pt}
+\setcounter{tocdepth}{2}
+
+\title{\textbf{nuScenes $\rightarrow$ OpenDRIVE $\rightarrow$ CARLA / RoadRunner}\\[6pt]
+\large Comprehensive Progress Report:\\ Rebuilding Real Driving Scenes in Simulation}
+\author{Keshu W.}
+\date{July 22, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This report documents, end to end, a pipeline that reconstructs real recorded driving
+scenes from the \textbf{nuScenes v1.0-mini} dataset inside two simulators. All ten mini
+scenes --- spanning the maps \emph{boston-seaport}, \emph{singapore-onenorth},
+\emph{singapore-queenstown}, and \emph{singapore-hollandvillage} --- are converted into
+OpenDRIVE road networks with real lane markings and traffic lights, enriched with ground,
+OpenStreetMap buildings, and assembled signal hardware, and then replayed --- ego vehicle
+plus all 703 recorded traffic participants --- in \textbf{CARLA 0.9.15} and in
+\textbf{MathWorks RoadRunner R2026a / RoadRunner Scenario}. Validation is systematic:
+per-scene real-vs-simulated six-camera montage GIFs, real-vs-simulated LiDAR bird's-eye
+views, reconstructed top-down renders, and OSM-georeferenced overlay figures. As of this
+writing, every scene has a converted and RoadRunner-hardened \file{.xodr} map, a full
+set of CARLA renders, a built RoadRunner ``city'' scene, and a saved collision-safe
+replay scenario. The report describes the architecture, every processing stage and its
+algorithms, the data schemas, the produced artifacts with per-scene statistics, and the
+known limitations.
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+%=====================================================================
+\section{Introduction}
+
+\subsection{Objective}
+The objective is to take a real, annotated driving log --- a nuScenes \emph{scene},
+i.e.\ roughly 20 seconds of urban driving with an HD vector map and 2\,Hz cuboid
+annotations for every traffic participant --- and reproduce it in simulation: the same
+road network with its true lane markings and traffic-light placement, comparable
+surroundings (ground plane, buildings), and the same traffic participants moving along
+their recorded trajectories around a controllable or replayed ego vehicle. Two simulator
+back-ends are fed from one simulator-neutral intermediate representation, enabling both
+game-engine experimentation (CARLA) and scenario-editing workflows (RoadRunner
+Scenario).
+
+\subsection{Dataset and scope}
+The source data is \textbf{nuScenes v1.0-mini}: 10 scenes, 404 keyframes total
+($\sim$39--41 keyframes per scene at 2\,Hz), recorded in Boston and Singapore across
+four map locations. Each map ships an HD vector map (lanes, lane connectors, dividers,
+stop lines, pedestrian crossings, traffic lights) with a published WGS84 origin, which
+this project exploits for georeferencing throughout.
+
+\subsection{Pipeline at a glance}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Stage} & \textbf{Tool} & \textbf{Env} & \textbf{Output} \\
+\midrule
+1. Map conversion & \file{convert\_nuscenes\_to\_xodr.py} & Py 3.12 (\file{nusc2xodr}) & \file{.xodr} + \file{\_meta.json} \\
+2. RoadRunner hardening & \file{fix\_xodr\_for\_roadrunner.py} & Py 3.12 & repaired \file{.xodr} \\
+3. CARLA load \& replay & \file{load\_xodr\_in\_carla.py} & Py 3.7 (\file{carla915}) & live sim, cam/LiDAR renders \\
+4. Validation & 2 notebooks + 5 scripts & Py 3.12 & montages, GIFs, BEV, overlays \\
+5. RoadRunner city scene & \file{nuscenes\_ground\_buildings.m} & MATLAB + Scene Builder & \file{*\_city.rrscene} \\
+6. RoadRunner replay & \file{replay\_agents.m} & MATLAB + RR Scenario & \file{*\_replay.rrscenario} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The intermediate representation is an OpenDRIVE 1.4 file plus a JSON \emph{sidecar}
+(\file{\_meta.json}) carrying everything OpenDRIVE cannot: the local-origin offset, the
+patch bounds, the ego trajectory, and the per-frame poses of every annotated agent
+(Section~\ref{sec:sidecar}).
+
+\subsection{Repository layout}
+\begin{itemize}
+\item \file{nuscenes2xodr/} --- the Python toolchain (converter, fixer, CARLA loader,
+      notebooks, plot/composite scripts, two conda environment files) and its
+      \file{output/} tree with all \file{.xodr} maps and rendered artifacts.
+\item \file{output\_roadrunner/} --- RoadRunner-hardened \file{.xodr} + sidecars, one
+      \file{.osm} extract per scene, and a per-scene subfolder with the generated HD map
+      (\file{\_city.rrhd}), georeferenced \file{.xodr} copy, marking cache, and agent
+      trajectory CSVs.
+\item \file{nuscenes\_test1/} --- the RoadRunner project (Assets, Scenes, Scenarios).
+\item \file{v1.0-mini/} --- a local copy of the nuScenes mini split (49k+ files).
+\item Five MATLAB scripts at the root: \file{insert\_intersection.m},
+      \file{load\_nuscenes\_xodr.m}, \file{load\_osm\_roads.m},
+      \file{nuscenes\_ground\_buildings.m}, \file{replay\_agents.m}.
+\end{itemize}
+
+\subsection{Execution environments}
+Two conda environments are required on the Python side because CARLA 0.9.15 ships only a
+Python 3.7 binding (\file{carla-0.9.15-cp37-cp37m}); there is no \file{carla} wheel for
+Python 3.12:
+\begin{itemize}
+\item \file{nusc2xodr} (Python 3.12): \file{numpy}, \file{shapely},
+      \file{nuscenes-devkit}. Runs the converter, fixer, notebooks, and plot scripts.
+\item \file{carla915} (Python 3.7): \file{numpy}, \file{pygame}, plus the bundled CARLA
+      wheel installed manually. Runs the loader against a running
+      \file{CarlaUE4.exe} server.
+\end{itemize}
+The MATLAB side requires Automated Driving Toolbox (for \code{roadrunner} /
+\code{roadrunnerHDMap}), a RoadRunner license with \textbf{Scene Builder} (HD-map
+import auto-builds junctions/props), and a \textbf{RoadRunner Scenario} license for the
+replay scenarios. RoadRunner is launched programmatically from MATLAB
+(\file{C:\textbackslash Program Files\textbackslash RoadRunner R2026a}), with session
+reuse: every script probes an existing \code{rrApp} handle before launching a new
+instance, and stops any active simulation before changing scenes (dataset changes fail
+while RoadRunner is simulating).
+
+%=====================================================================
+\section{Coordinate Frames and Georeferencing}
+\label{sec:frames}
+
+\textbf{Map frame.} Raw nuScenes coordinates (metres, right-handed, $x$ east / $y$
+north per map).
+
+\textbf{Patch-local frame.} Everything exported is shifted by
+$\mathit{origin} = (x_{\min}, y_{\min})$, the lower-left corner of the scene's region
+patch, keeping geometry near the origin for numerical stability. No rotation, no axis
+flip.
+
+\textbf{WGS84.} Each map's published origin (latitude/longitude of map coordinate
+$(0,0)$) is used with an equirectangular linearization
+($R_\oplus = 6\,378\,137$\,m):
+\[
+\mathrm{lat} = \mathrm{lat}_0 + \frac{y}{R_\oplus}\cdot\frac{180}{\pi},
+\qquad
+\mathrm{lon} = \mathrm{lon}_0 + \frac{x}{R_\oplus \cos(\mathrm{lat}_0)}\cdot\frac{180}{\pi}.
+\]
+The published origins used consistently across Python and MATLAB:
+
+\begin{center}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Map} & \textbf{lat$_0$} & \textbf{lon$_0$} \\
+\midrule
+boston-seaport            & 42.336849169438615 & $-$71.05785369873047 \\
+singapore-onenorth        & 1.2882100868743724 & 103.78475189208984 \\
+singapore-hollandvillage  & 1.2993652317780957 & 103.78217697143555 \\
+singapore-queenstown      & 1.2782562240223188 & 103.76741409301758 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{CARLA convention.} CARLA is left-handed and flips $Y$ when ingesting OpenDRIVE;
+the loader converts every pose with $(x, y, \psi) \rightarrow (x, -y, -\psi)$.
+
+\textbf{RoadRunner convention.} Both the OpenDRIVE and the HD-map imports are placed by
+\emph{projection}: the files carry a real transverse-mercator \code{geoReference}
+(a \code{+proj=tmerc} string) centred on the patch corner, the
+scene world origin is set to the same point via \code{changeWorldSettings}, and imports
+use \code{ProjectionMode="FullProjection"} --- so multiple layers land in registration
+deterministically instead of being centred on their data.
+
+%=====================================================================
+\section{Stage 1 --- nuScenes to OpenDRIVE Converter}
+\label{sec:converter}
+
+\file{convert\_nuscenes\_to\_xodr.py} converts the map region covered by one scene into
+OpenDRIVE 1.4. It runs standalone on \file{nuscenes-devkit}/\file{shapely}/\file{numpy}.
+
+\subsection{Core algorithm}
+\begin{enumerate}
+\item \textbf{Ego trajectory and patch.} Walk the scene's sample chain; for each
+      keyframe read the \code{LIDAR\_TOP} sample's \code{ego\_pose}, yielding
+      $(x, y, \psi)$ poses (yaw extracted from the quaternion). The region patch is the
+      bounding box of the trajectory padded by \code{--padding} (default 50\,m); an
+      explicit \code{--region} override is supported.
+\item \textbf{Lane selection.} \code{get\_records\_in\_patch} selects all \code{lane}
+      and \code{lane\_connector} records intersecting the patch.
+\item \textbf{Geometry and width.} Each centerline is discretized from its arcline path
+      at \code{--resolution} (default 0.5\,m). Per-lane width is estimated as
+      $\text{polygon area} / \text{centerline length}$, clamped to $[2, 6]$\,m
+      (fallback 3.5\,m), unless \code{--lane-width} fixes it globally.
+\item \textbf{Topology.} A union-find clusters lane connectors that share an incoming
+      \emph{or} outgoing lane; each cluster becomes one \code{<junction>}. Because
+      nuScenes connectors are strictly one-in/one-out, every lane has at most one
+      junction per end, giving well-defined predecessor/successor links.
+\item \textbf{Emission.} Each lane and connector becomes a \code{<road>}; connectors
+      carry the junction id. The plan view is a chain of straight \code{<line>}
+      geometries (no arcs/spirals). Each road has a single driving lane with id $-1$;
+      a \code{laneOffset} of $+w/2$ shifts the lane reference so the driving lane
+      \emph{straddles} the true centerline. Junctions emit one \code{<connection>} per
+      connector with \code{<laneLink from="-1" to="-1">}.
+\end{enumerate}
+
+\subsection{Lane markings}
+Marking types come from the real nuScenes divider data: for each lane, the dominant
+non-NIL \code{segment\_type} among its left/right divider segments is mapped to an
+OpenDRIVE \code{roadMark} --- \code{DASHED} $\rightarrow$ broken, \code{SOLID} (and,
+approximately, \code{ZIGZAG}) $\rightarrow$ solid, a \code{DOUBLE} qualifier doubles the
+type, and a \code{YELLOW} substring selects yellow. The mark on the centerline side is
+carried by the center lane, the outer mark by the driving lane (width 0.13\,m,
+standard weight). Lane connectors emit no markings, matching unmarked junction
+interiors in the source map.
+
+\subsection{Optional layers}
+\begin{itemize}
+\item \textbf{Crosswalks} (\code{--crosswalks}): \code{ped\_crossing} polygons are
+      exported both into the sidecar and as OpenDRIVE
+      \code{<object type="crosswalk">} outlines attached to the nearest road via
+      projection to $(s,t)$ coordinates.
+\item \textbf{Buildings} (\code{--buildings}): nuScenes has no building layer, so
+      footprints are \emph{synthesized} in the negative space: the union of occupied
+      layers (drivable area, road segments, walkways, carparks, crossings, lanes,
+      buffered 2\,m) is subtracted from the patch; leftover blocks (area
+      $\ge 120$\,m$^2$, 3\,m setback) are tiled on a 14\,m grid with
+      $11.2\times11.2$\,m boxes and deterministic pseudo-random heights of 8--24\,m.
+      These go to the sidecar only.
+\item \textbf{Traffic lights} (\code{--traffic-lights}): OpenDRIVE \code{<signal>}
+      elements (type 1000001, dynamic, $z$-offset 5\,m) are placed at the end of each
+      approach lane and grouped into per-phase \code{<controller>}s by approach axis
+      --- CARLA's importer turns these into functional, cycling
+      \code{carla.TrafficLight} groups. With \code{--osm-signals} the converter fetches
+      the real OSM \code{traffic\_signals} nodes for the region from the Overpass API
+      (two mirrors, retries) and places one signal per real node on the nearest
+      approach lane, so the light \emph{count} matches reality; without it, every
+      junction is lit.
+\end{itemize}
+
+\subsection{The metadata sidecar}
+\label{sec:sidecar}
+Each map ships with \file{<name>\_meta.json}:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{9.6cm}@{}}
+\toprule
+\textbf{Key} & \textbf{Content} \\
+\midrule
+\code{scene}, \code{map} & scene name and map location \\
+\code{origin} & $\{x, y\}$ patch corner in the map frame (the local-frame origin) \\
+\code{patch} & $\{x_{\min}, y_{\min}, x_{\max}, y_{\max}\}$ region bounds \\
+\code{ego\_start\_local} & first ego pose $\{x, y, \mathit{yaw}\}$, local frame \\
+\code{ego\_trajectory\_local} & list of ego poses, one per keyframe \\
+\code{frame\_dt} & keyframe interval, 0.5\,s \\
+\code{agent\_frames} & per keyframe: list of agents $\{$\code{id} (instance token),
+  \code{category}, \code{x}, \code{y}, \code{yaw}, \code{wlh}$\}$; dynamic categories
+  (\code{vehicle.*}, \code{human.pedestrian.*}) by default,
+  \code{--include-static} adds cones/barriers/debris \\
+\code{buildings} & synthesized footprints $\{x, y, s_x, s_y, \mathit{yaw}, \mathit{height}\}$ \\
+\code{crosswalks} & local-frame polygons \\
+\code{counts} & $\{$lanes, connectors, junctions$\}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The ego trajectory and \code{agent\_frames} are aligned one-to-one, so a frame index
+identifies the same instant in every downstream artifact (camera frames, LiDAR sweeps,
+BEV renders, RoadRunner trajectories).
+
+%=====================================================================
+\section{Stage 2 --- Hardening OpenDRIVE for RoadRunner}
+\label{sec:fixer}
+
+The raw converter output loads in CARLA but is rejected or mishandled by RoadRunner.
+\file{fix\_xodr\_for\_roadrunner.py} batch-processes \file{nuscenes2xodr/output/*.xodr}
+into \file{output\_roadrunner/} (copying the sidecars along) and applies six fixes:
+
+\begin{enumerate}
+\item \textbf{Endpoint snapping.} Connector endpoints within 2\,m of their linked
+      lane's endpoint are snapped exactly onto it, closing sub-2\,m gaps that leave
+      roads disconnected in RoadRunner.
+\item \textbf{Plan-view simplification.} Each road polyline is reduced with
+      Douglas--Peucker at 0.03\,m lateral tolerance and the plan view re-emitted ---
+      the 0.5\,m discretization otherwise creates hundreds of control points per road
+      that RoadRunner struggles to manage. (This is why the hardened files are
+      3--7$\times$ smaller, e.g.\ scene-0103: 912\,kB $\rightarrow$ 199\,kB.)
+\item \textbf{Marking defaults.} Real lanes whose divider data was NIL get standard
+      marks (broken white centerline, solid white edge); junction interiors stay
+      unmarked.
+\item \textbf{Lane-level links.} Connector roads receive lane-level
+      \code{<predecessor>}/\code{<successor>} links mirroring the road-level links ---
+      RoadRunner derives maneuver topology from lane links.
+\item \textbf{Real header bounds.} North/south/east/west are recomputed from actual
+      geometry ($\pm$10\,m pad); the converter's \code{south=west=0} caused
+      RoadRunner's ``Bounds of file invalid'' rejection.
+\item \textbf{Real geoReference.} The header's projection string is rewritten to a
+      transverse-mercator centred on the scene origin's true latitude/longitude
+      (Section~\ref{sec:frames}), so GIS layers and aerial imagery line up.
+\end{enumerate}
+
+%=====================================================================
+\section{Stage 3 --- CARLA Loading and Replay}
+\label{sec:carla}
+
+\file{load\_xodr\_in\_carla.py} ($\sim$1{,}470 lines) targets a running CARLA 0.9.15
+server. The world is generated with
+\code{client.generate\_opendrive\_world()} (vertex distance 2\,m, max road length
+500\,m, extra lane width 0.6\,m, smoothed junctions). The recorded ego start pose is
+converted through the $Y$-flip and \emph{snapped} onto the nearest drivable lane via
+\code{map.get\_waypoint(project\_to\_road=True)}; the ego (red Tesla Model~3) spawns
+there. Scenarios are selectable by id (0--9 in nuScenes order), scene number, or
+explicit path; \code{--all-scenarios} runs the whole mini set back-to-back with
+per-scenario error isolation (used for batch camera/LiDAR rendering). A weather preset
+is applied (\code{ClearNoon} default).
+
+\subsection{Driving modes}
+\begin{description}
+\item[Replay (default).] Deterministic synchronous-mode playback. The fixed step is
+      the keyframe interval over the substep count (default 0.05\,s); the ego has physics
+      disabled and is teleported each substep along a Catmull--Rom interpolation of the
+      keyframes (shortest-arc yaw interpolation), giving even velocity and no camera
+      flicker. Ground height is queried through a 1\,m-grid cache for even frame
+      timing, and every actor is grounded by its own bounding box (the offset
+      $e_z - b_z$ places the box bottom at road level --- pedestrians don't sink,
+      vehicles don't float). The chase camera's yaw is exponentially smoothed.
+      Playback loops by default; asynchronous mode and ego physics are restored on
+      exit.
+\item[Follow.] The ego is driven \emph{physically} by CARLA's
+      \code{VehiclePIDController} (lateral $K_P{=}1.0$, $K_I{=}0.1$; longitudinal
+      $K_P{=}1.0$, $K_I{=}0.05$; $dt=0.05$\,s) over the recorded waypoints, with
+      per-segment target speed $\min(60, \|\Delta p\|/\mathit{dt}\cdot3.6)$\,km/h, a
+      3\,m arrival radius, and a 6\,s per-target budget to escape stalls. The recorded
+      agents are kept \emph{in step with the ego's actual progress}: the ego's
+      projection onto the current route segment yields a fractional keyframe time that
+      drives the agent replayer. A red GOAL marker (vertical line + label) shows the
+      current target.
+\item[Manual.] A $1280\times720$ pygame window with chase camera (FOV 90) and HUD
+      (speed, gear, steer, autopilot state, agent/frame counters). Keyboard (W/S/A/D,
+      Space handbrake, Q reverse, P autopilot toggle, ESC quit) or gamepad/wheel
+      (\code{--joystick}: axis-mapped steer/throttle/brake with deadzone). The recorded
+      agents replay around the driver in real time, looped.
+\item[Autopilot.] Traffic Manager drives the ego on the converted map (speed offset
+      30\%, ignoring the scripted lights/signs).
+\end{description}
+
+\subsection{Agent replay engine}
+A shared \code{\_AgentReplayer} spawns each annotated agent on first appearance and
+teleports it (physics off) with linear position and shortest-arc yaw interpolation
+between keyframes; agents absent from a keyframe are hidden 200\,m underground rather
+than destroyed. nuScenes categories map to CARLA blueprints by kind (pedestrian walkers;
+bicycles: Crossbike/Century/Omafiets; motorcycles: Low Rider/YZF/Ninja/Vespa; bus:
+Fuso Rosa; truck: CarlaCola/Firetruck; cars: A2/TT/Model3/Patrol/Prius/Leon/C3).
+Blueprint and color choice are keyed on a stable hash of the nuScenes instance token, so
+an agent keeps its model and color across frames \emph{and} across runs; red is
+reserved for the ego. Spawn retries lift the actor $+1$/$+3$\,m on collision.
+\code{--max-agents} caps the population by order of first appearance;
+\code{--replay-speed} scales time.
+
+\subsection{Trajectory overlay}
+During replay/follow, past and future trajectories are drawn for the ego and every
+agent with track data, sampled at \code{--traj-hz} (default 2\,Hz): 2\,s of history
+(dimmed to 35\%) and 6\,s of future (full brightness), as short-lived debug lines and
+points re-drawn each keyframe. Colors: ego red, vehicles blue, pedestrians green,
+cyclists/motorcyclists magenta.
+
+\subsection{Sensors: six-camera rig and LiDAR}
+\textbf{Calibrated rig (default).} When a scene's calibration sidecar exists (produced
+by a companion experiment, \file{phase0\_calib\_gt}), the six nuScenes cameras are
+spawned \emph{free-floating} --- CARLA's vehicle pivot differs from the nuScenes ego
+origin, so attachment would bias extrinsics. Each tick every camera is teleported to
+$\mathit{ego\_pose}\circ\mathit{extrinsic}$ (rotation composed in matrix form, then
+converted back to CARLA Euler angles) and renders at the native $1600\times900$ with
+per-camera FOV $=2\arctan\!\big(W/2f_x\big)$ from the real intrinsics (e.g.\
+CAM\_FRONT $64.56^\circ$ rather than the approximate $70^\circ$). Saved views therefore
+share the real cameras' projection and are directly usable for calibration-sensitive
+perception evaluation (BEVFormer-class models).
+
+\textbf{Approximate rig (fallback / \code{--approx-rig}).} Six cameras attached at
+roughly the nuScenes mounts (front trio at $z=1.51$\,m, yaws $0/\pm55^\circ$, FOV 70;
+back at $180^\circ$, FOV 110; back sides at $\pm110^\circ$, FOV 70), default
+$800\times450$.
+
+Frames are saved once per keyframe into a per-scene, per-camera folder tree under
+\file{output/cameras/} (follow mode writes to \file{output/cameras\_follow/} so runs
+don't clash), mirroring the nuScenes per-camera layout.
+
+\textbf{LiDAR.} \code{--lidar} attaches an HDL-32E-like \code{sensor.lidar.ray\_cast}
+at the nuScenes mount ($x=0.90$, $z=1.84$\,m; $+10^\circ/-30^\circ$ vertical FOV, 32
+channels, 70\,m range, $\sim$34k points per sweep). In synchronous mode the rotation
+rate is locked to the tick so each keyframe stores exactly one full $360^\circ$ sweep as
+an ASCII \file{.ply} under \file{output/lidar\_carla/<scene>/}.
+
+\subsection{Scenery drawing}
+Sidecar buildings can be realized as \emph{solid} blocks by tiling a static-prop box
+mesh (shipping container by default; prop size probed at runtime) up to
+\code{--building-layers} high, or as persistent wireframe boxes. Sidecar crosswalk
+polygons are drawn as white zebra stripes (0.5\,m bars, 0.6\,m gaps) slightly above the
+road, since CARLA's standalone OpenDRIVE mode paints no crossings.
+
+%=====================================================================
+\section{Stage 4 --- Validation and Visualization}
+\label{sec:validation}
+
+\subsection{Real vs.\ simulated cameras}
+\file{align\_sim\_vs\_real.ipynb} builds zero-padding, labelled $2\times3$ six-camera
+montages (front-left/front/front-right over back-left/back/back-right, $480\times270$
+cells) for each keyframe --- real images from the devkit on top, CARLA renders below ---
+and animates three GIFs per scene at the native 2\,Hz: \file{nuscenes\_real.gif},
+\file{carla\_sim.gif}, and \file{comparison.gif} (REAL banner over SIM banner). A
+\code{MODE} switch selects the replay or follow camera tree; missing simulated cameras
+render as placeholders so the real side always works.
+
+\subsection{OSM georeferencing check}
+\file{align\_osm.ipynb} projects each scene's patch and ego trajectory to WGS84
+(Section~\ref{sec:frames}), fetches OSM roads, buildings, and \code{traffic\_signals}
+for the bounding box from Overpass (stdlib-only HTTP, three mirror endpoints), and plots
+OSM (grey) under the nuScenes lane centerlines (blue), ego trajectory (red), and real
+signal nodes (yellow). The resulting figures
+(\file{output/osm\_aligned/<scene>.png}) validate both the georeferencing used
+everywhere and the \code{--osm-signals} light counts.
+
+\subsection{Bird's-eye-view and LiDAR renderers}
+\begin{itemize}
+\item \file{plot\_topdown.py} re-renders the scene \emph{from the exported artifacts
+      alone} (\file{.xodr} lane surfaces + sidecar poses): ego-centred, north-up BEV
+      frames (100\,m window) with oriented agent boxes, heading ticks, and the same
+      history/future trajectory color scheme as CARLA; per-scene GIF at 4\,fps.
+\item \file{plot\_lidar.py} renders the original nuScenes \code{LIDAR\_TOP} sweeps in
+      the same ego-centred north-up frame (height-colored, $-2$ to $8$\,m clip, dark
+      background).
+\item \file{plot\_lidar\_carla.py} renders the CARLA-captured sweeps identically
+      (left$\rightarrow$right-handed flip, $+1.84$\,m mount height, rotation by the
+      recorded ego yaw), enabling a direct real-vs-sim LiDAR comparison.
+\item The composite builders \file{build\_aligned\_topdown.py} and
+      \file{build\_aligned\_full.py} assemble per-frame panels: cameras + BEV, and the
+      full three-column panel (REAL/SIM cameras, real-over-sim LiDAR, top-down), as
+      404 PNG frames and 10 GIFs each.
+\end{itemize}
+
+\subsection{Rendered-artifact inventory}
+All ten scenes are fully rendered on the CARLA side; the folders below live in the
+converter's \file{output/} tree:
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Folder} & \textbf{Content} & \textbf{Files} \\
+\midrule
+\file{cameras/}          & replay-mode 6-cam frames (10 scenes + 1 backup) & 2{,}658 PNG \\
+\file{cameras\_follow/}  & follow-mode 6-cam frames                        & 2{,}424 PNG \\
+\file{aligned/}          & real/sim/comparison GIFs (replay)               & 30 GIF \\
+\file{aligned\_follow/}  & real/sim/comparison GIFs (follow)               & 30 GIF \\
+\file{lidar/}            & real LiDAR BEV frames + GIFs                    & 404 PNG + 10 GIF \\
+\file{lidar\_carla/}     & CARLA LiDAR sweeps, BEV frames, GIFs            & 404 PLY + 404 PNG + 10 GIF \\
+\file{topdown/}          & reconstructed BEV frames + GIFs                 & 404 PNG + 10 GIF \\
+\file{aligned\_topdown/} & cameras+BEV composites                          & 404 PNG + 10 GIF \\
+\file{aligned\_full/}    & cameras+LiDAR+BEV composites                    & 404 PNG + 10 GIF \\
+\file{osm\_aligned/}     & OSM overlay figures                             & 10 PNG \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%=====================================================================
+\section{Stage 5 --- RoadRunner City Scenes (MATLAB)}
+\label{sec:rrscene}
+
+The RoadRunner side was developed in four increments.
+
+\subsection{Programmatic building blocks}
+\file{insert\_intersection.m} established the workflow: since the MATLAB API cannot edit
+scene geometry directly, two crossing two-lane roads are described as a
+\code{roadrunnerHDMap} (lane boundaries + lanes with travel directions); on import,
+Scene Builder's \emph{overlap groups} auto-construct the four-way junction (surface,
+corner radii, markings). \file{load\_nuscenes\_xodr.m} then established direct OpenDRIVE
+import of a converted scene.
+
+\subsection{Deterministic multi-layer registration}
+\file{load\_osm\_roads.m} co-registers the nuScenes road network with the OSM road
+network of the same area. The OSM extract is converted to OpenDRIVE through MATLAB's
+\code{drivingScenario} importer/exporter; both OpenDRIVE files then receive a real
+transverse-mercator \code{geoReference} at their local origins (injected textually into
+the header); the RoadRunner world origin is set to the nuScenes patch corner; and both
+files are imported with \code{FullProjection}. A diagnostic overlay figure predicts the
+in-scene registration and is used to calibrate a per-scene \code{manualShift}
+(east/north metres) absorbing OSM's few-metre urban absolute error; the shift is baked
+into the OSM file's declared origin so the projection itself carries the correction.
+
+\subsection{The city-scene builder}
+\file{nuscenes\_ground\_buildings.m} ($\sim$790 lines) assembles, per scene, a complete
+``city'' scene from five sources, all delivered through \emph{one} HD-map
+(\file{.rrhd}) import on top of the OpenDRIVE roads:
+
+\begin{enumerate}
+\item \textbf{Roads}: the hardened scene \file{.xodr}, imported with signals off
+      (signals are assembled separately, below).
+\item \textbf{Real markings}: \code{lane\_divider} and \code{road\_divider} polylines
+      are extracted from the nuScenes map-expansion JSON (patch-clipped, cached to a
+      \file{.mat}), and emitted as HD-map \emph{curve markings} referencing RoadRunner
+      marking assets (dashed single white / solid double yellow) drawn 2\,cm above the
+      road. They come from the same map frame as the lanes, so they are aligned by
+      construction.
+\item \textbf{Ground}: a large level slab (patch $+120$\,m margin) built as parallel
+      12\,m flat \code{Sidewalk} lanes at $z=-0.15$\,m.
+\item \textbf{Buildings}: OSM footprints (the extract is auto-downloaded from the OSM
+      API per scene if missing, with a $\sim$200\,m padded bbox; failures are
+      non-fatal). Heights come from OSM \code{height} or
+      \code{building:levels}$\times$3.2\,m (default 10\,m). Each footprint is
+      approximated by oriented boxes: the minimum-area rectangle is used directly when
+      it fits well, otherwise the polygon is recursively split across the rectangle's
+      long axis (up to depth 3, fill-ratio threshold 0.55) so L/U-shaped buildings
+      become several tight boxes. Boxes that cover road are shrunk about their center
+      until they clear the lane centerlines by 2\,m (never below 80\% scale ---
+      buildings shrink but survive). Boxes are realized as \code{StaticObject}s cycling
+      through three downtown building meshes.
+\item \textbf{Traffic signals}: positions and facings are taken (configurably) from the
+      \file{.xodr} \code{<signal>} entries, the OSM signal nodes, or the surveyed
+      nuScenes \code{traffic\_light} layer. Since the recorded point marks the
+      \emph{light} (over the road), not the pole, the builder: snaps the facing to the
+      nearest lane travelling toward the light; determines the off-road side by probing
+      road-sample distances; walks the pole position outward until it clears the
+      drivable area; then assembles --- like the stock \file{FourWaySignal} scene --- a
+      9.2\,m post at the roadside, a 7.8\,m mast arm spanning back over the road, and
+      two three-light heads hung under the arm (outermost over the recorded light
+      position), all as \code{StaticObject} boxes with measured FBX half-extents so the
+      assets keep natural proportions.
+\end{enumerate}
+
+A preview figure (roads, footprints, placed boxes, markings, signal poles/arms/facings)
+is rendered before the import for visual QA. Scene selection is generic
+(\code{scene-01}\ldots\code{scene-10} or real ids); all ten scenes were built with the
+same script into \file{<scene>\_city.rrscene}.
+
+%=====================================================================
+\section{Stage 6 --- Agent Replay in RoadRunner Scenario}
+\label{sec:rrreplay}
+
+\file{replay\_agents.m} converts the sidecar's \code{agent\_frames} into a saved,
+collision-safe RoadRunner Scenario on top of the corresponding city scene.
+
+\subsection{Trajectory export and asset mapping}
+Per-agent tracks are collected across frames and written as RoadRunner ``CSV
+Trajectory'' files (\code{time,x,y,yaw}; yaw in radians), with
+\code{SpawnTime}/\code{RemoveTime} taken from when each agent enters/leaves the
+recording. Tracks shorter than 2 frames are skipped. A 2\,mm-per-frame creep along the
+heading keeps consecutive waypoints distinct --- the trajectory follower rejects
+coincident points, which parked vehicles and stop phases would otherwise produce ---
+while preserving stop timing visually. Category mapping: cars cycle through
+Sedan/SUV/CompactCar for variety; truck $\rightarrow$ PickupTruck; bus $\rightarrow$
+SchoolBus; construction $\rightarrow$ UtilityTruck; emergency $\rightarrow$ Ambulance;
+bicycle/motorcycle $\rightarrow$ NCAP two-wheelers; pedestrians (adult/child)
+$\rightarrow$ \file{.rrchar} character assets (required: prop/mesh assets abort the
+simulator). The ego is a green (\#00B050) sedan.
+
+\subsection{Collision pre-pruning}
+RoadRunner Scenario \emph{fails} a simulation on any actor contact, and real annotated
+boxes plus substitute assets of different sizes do touch. The script therefore
+pre-verifies the entire replay:
+\begin{itemize}
+\item All accepted tracks (ego first, then agents in order of appearance) are resampled
+      on a fine 0.1\,s timeline with \emph{linear} interpolation --- exactly how
+      RoadRunner moves actors between waypoints, so contacts \emph{between} the 0.5\,s
+      keyframes are caught. Yaw is unwrapped before interpolation.
+\item Each candidate is tested against every accepted actor with a separating-axis
+      oriented-bounding-box test. Footprints are per-category (e.g.\ car
+      $5.1\times2.2$\,m, bus $11.5\times2.9$\,m, pedestrian $0.6\times0.6$\,m) and
+      inflated to be strictly more conservative than RoadRunner's own test: vehicle
+      half-extents $\times1.25 + 0.3$\,m; pedestrians $+0.15$\,m only (tight boxes so
+      groups walking together survive).
+\item Actors waiting on their spawn delay are modelled as parked at their first
+      waypoint from $t=0$ (they are physically present in RoadRunner).
+\item On first contact the agent is \emph{truncated} just before the contact time
+      (\code{RemoveTime} takes it out of simulation there); if the contact exists from
+      its first frame or the remainder is too short, the agent is dropped. The ego is
+      untouchable.
+\end{itemize}
+
+\subsection{Scenario assembly}
+The script reuses a live RoadRunner session, stops any active simulation, opens the
+scene's city scene --- \emph{auto-building it} via
+\file{nuscenes\_ground\_buildings.m} if missing --- creates a new scenario, imports the
+ego and every surviving agent CSV with its per-actor asset and spawn/remove times,
+saves \file{<scene>\_replay.rrscenario}, and echoes any RoadRunner import errors or
+warnings. All ten scenarios are saved and playable from the Simulation tool.
+
+%=====================================================================
+\section{Results and Current Status}
+\label{sec:results}
+
+\subsection{Per-scene statistics}
+Statistics computed from the actual artifacts (sidecars, hardened \file{.xodr} files,
+and exported trajectories). ``Traj.\ CSV'' is the number of agent trajectories that
+survived collision pruning and were imported into the RoadRunner scenario (the ego adds
+one more per scene); the difference to ``Agents'' consists of dropped/truncated-away
+tracks, single-frame tracks, and unmapped categories.
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+\textbf{Scene} & \textbf{Map} & \textbf{Frames} & \textbf{Agents} & \textbf{Roads} & \textbf{Junc.} & \textbf{Signals} & \textbf{Traj.\ CSV} \\
+\midrule
+scene-0061 & singapore-onenorth       & 39 &  89 &  73 & 18 & 4 &  57 \\
+scene-0103 & boston-seaport           & 40 & 113 &  93 & 18 & 7 & 109 \\
+scene-0553 & boston-seaport           & 41 &  40 &  54 &  9 & 9 &  29 \\
+scene-0655 & boston-seaport           & 41 & 117 &  77 & 14 & 0 &  73 \\
+scene-0757 & boston-seaport           & 41 &  24 &  30 &  5 & 1 &  12 \\
+scene-0796 & singapore-queenstown     & 40 &  50 & 130 & 18 & 5 &  35 \\
+scene-0916 & singapore-queenstown     & 41 &  94 &  50 & 15 & 0 &  63 \\
+scene-1077 & singapore-hollandvillage & 41 &  59 & 137 & 30 & 3 &  38 \\
+scene-1094 & singapore-hollandvillage & 40 &  85 &  94 & 18 & 2 &  65 \\
+scene-1100 & singapore-hollandvillage & 40 &  32 &  45 &  5 & 8 &  23 \\
+\midrule
+\textbf{Total} & & 404 & 703 & 783 & 150 & 39 & 504 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Agent population by category}
+Unique annotated agents across all ten scenes:
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lr@{\qquad}lr@{}}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{Category} & \textbf{Count} \\
+\midrule
+vehicle.car                & 390 & vehicle.construction              & 6 \\
+human.pedestrian.adult     & 213 & human.pedestrian.child            & 4 \\
+vehicle.truck              & 28  & vehicle.trailer                   & 2 \\
+vehicle.motorcycle         & 20  & human.pedestrian.police\_officer  & 1 \\
+vehicle.bicycle            & 15  & human.pedestrian.personal\_mobility & 1 \\
+vehicle.bus (rigid+bendy)  & 15  & human.pedestrian.construction\_worker & 8 \\
+\midrule
+\multicolumn{3}{l}{\textbf{Total unique agents}} & \textbf{703} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Deliverables checklist}
+Every scene has completed the full chain:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Artifact (per scene, $\times$10)} & \textbf{Status} \\
+\midrule
+Converted \file{.xodr} + \file{\_meta.json} (CARLA flavor)        & \checkmark \\
+RoadRunner-hardened \file{.xodr} + \file{.osm} extract            & \checkmark \\
+CARLA camera renders, replay and follow modes (6 cams)            & \checkmark \\
+CARLA LiDAR sweeps + BEV renders                                  & \checkmark \\
+Real-vs-sim comparison GIFs (cameras, LiDAR, top-down, composites)& \checkmark \\
+OSM georeferencing overlay figure                                 & \checkmark \\
+RoadRunner city scene (\file{\_city.rrscene} + \file{\_city.rrhd})& \checkmark \\
+RoadRunner replay scenario (\file{\_replay.rrscenario})           & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Chronology}
+File timestamps trace the work: the Python conversion/validation toolchain and the
+CARLA renders were completed by early July 2026 (converter and notebooks June
+30--July 4); the RoadRunner track was built July 20--22 --- programmatic intersection
+and direct \file{.xodr} import on July 20, OSM co-registration later that day, all ten
+city scenes on July 21, and the replay scenarios finalized July 21--22 (scene-0103 and
+scene-0916 re-exported on July 22).
+
+%=====================================================================
+\section{Known Limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+\item \textbf{Geometry.} Plan views are straight-line chains (no analytic
+      arcs/spirals); curvature is only as smooth as the 0.5\,m sampling
+      (Douglas--Peucker-simplified to 3\,cm tolerance for RoadRunner). Elevation is
+      flat ($z=0$).
+\item \textbf{Lane model.} One driving lane per road (id $-1$, laneOffset trick);
+      multi-lane carriageways are represented as parallel single-lane roads.
+      Singapore's left-hand traffic is emitted as right-side lanes; travel direction
+      follows the nuScenes lane direction, so drivability is correct but handedness
+      semantics are not modelled.
+\item \textbf{Junctions.} Where connectors don't share lanes inside the crop, many
+      small single-connector junctions appear --- valid OpenDRIVE, just not visually
+      consolidated.
+\item \textbf{Registration.} The OSM \code{manualShift} calibration has been measured
+      only for scene-0103 ($[0\ 0]$); the other nine scenes use no shift and may have
+      buildings a few metres off.
+\item \textbf{Signals and rules.} Scripted replay/follow ego motion ignores traffic
+      lights, as do the replayed agents (they follow recorded reality, which obeyed
+      the real lights). Two scenes (0655, 0916) have no signals in their patches.
+\item \textbf{Replay fidelity vs.\ RoadRunner constraints.} Collision pre-pruning
+      deliberately truncates or drops agents whose (inflated) boxes would touch ---
+      fidelity is traded for RoadRunner's fail-on-collision rule; 504 of 703 agents
+      survive as full or truncated trajectories.
+\item \textbf{Converter/loader details.} \code{--osm-radius} is declared but signal
+      matching actually uses nearest-approach-lane; building synthesis
+      (\code{--buildings} in the converter) is heuristic negative-space tiling, whereas
+      the RoadRunner track uses real OSM footprints.
+\end{itemize}
+
+%=====================================================================
+\section{Suggested Next Steps}
+\begin{itemize}
+\item Calibrate \code{manualShift} for the remaining nine scenes (the overlay figure
+      workflow makes this a few minutes per scene).
+\item Add elevation --- e.g.\ from LiDAR ground fits --- to the OpenDRIVE and the
+      RoadRunner ground slab.
+\item Consolidate small junctions and emit analytic arcs for smoother RoadRunner
+      editing.
+\item Close the loop between back-ends: export the RoadRunner scenarios to
+      OpenSCENARIO / back into CARLA, and compare both replays frame-by-frame.
+\item Use the calibrated CARLA renders for perception-model evaluation (the
+      calibrated rig was designed for BEVFormer-class models) on simulated replicas of
+      the real scenes, including domain-gap studies against the real camera GIFs.
+\item Extend beyond v1.0-mini to the full trainval maps (the converter already supports
+      any scene/version and explicit region overrides).
+\end{itemize}
+
+\appendix
+%=====================================================================
+\section{Appendix: Command-Line Reference}
+
+\subsection{Converter (\file{convert\_nuscenes\_to\_xodr.py})}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Flag} & \textbf{Default} & \textbf{Purpose} \\
+\midrule
+\code{--dataroot} / \code{--map-dataroot} & mini split path & dataset / map expansion roots \\
+\code{--version}        & \code{v1.0-mini}  & nuScenes version \\
+\code{--scene-index} / \code{--scene-name} & 0 / --- & scene selection \\
+\code{--all-scenes}     & off               & convert every scene \\
+\code{--region}         & ---               & explicit patch override (map frame) \\
+\code{--padding}        & 50\,m             & margin around ego bbox \\
+\code{--resolution}     & 0.5\,m            & centerline sampling step \\
+\code{--lane-width}     & per-lane estimate & fixed width override \\
+\code{--crosswalks}     & off               & emit crosswalk objects + polygons \\
+\code{--buildings}      & off               & synthesize sidecar footprints \\
+\code{--traffic-lights} & off               & emit signals + phase controllers \\
+\code{--osm-signals} / \code{--osm-radius} & off / 40\,m & real OSM light counts \\
+\code{--include-static} & off               & export cones/barriers/debris too \\
+\code{--out}            & auto-named        & output path \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{CARLA loader (\file{load\_xodr\_in\_carla.py})}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Flag} & \textbf{Default} & \textbf{Purpose} \\
+\midrule
+\code{--scenario-id} / \code{--scene} / \code{--xodr} & 0 / --- / --- & scenario selection \\
+\code{--list} / \code{--all-scenarios} & --- & enumerate / batch-run all \\
+\code{--host} / \code{--port} & 127.0.0.1 / 2000 & server address \\
+\code{--vertex-distance} / \code{--max-road-length} & 2.0 / 500 & mesh generation \\
+\code{--wall-height} / \code{--extra-width} & 0.0 / 0.6 & mesh generation \\
+\code{--no-ego} / \code{--no-drive} & off & load-only / spawn-only \\
+\code{--replay} (default) / \code{--follow} / \code{--manual} & replay & driving mode \\
+\code{--joystick}       & off    & manual: gamepad/wheel input \\
+\code{--carla-agents}   & PythonAPI path & \code{agents} package for follow \\
+\code{--no-agents} / \code{--max-agents} & off / 0 & agent population control \\
+\code{--replay-speed} / \code{--substeps} & 1.0 / 10 & playback speed / interpolation \\
+\code{--loop} (default) / \code{--no-loop} & loop & repeat vs.\ single pass \\
+\code{--no-traj} / \code{--traj-hz} & on / 2\,Hz & overlay toggle / sampling \\
+\code{--hist-seconds} / \code{--future-seconds} & 2 / 6 & overlay history/future span \\
+\code{--cameras} / \code{--cam-dir} & off / \file{output/cameras} & camera rig \\
+\code{--cam-width} / \code{--cam-height} & 800 / 450 & approx-rig resolution \\
+\code{--calib-dir} / \code{--approx-rig} & phase0 path / off & calibrated vs.\ legacy rig \\
+\code{--lidar} / \code{--lidar-dir} & off / \file{output/lidar\_carla} & LiDAR capture \\
+\code{--lidar-range} / \code{--lidar-channels} & 70\,m / 32 & LiDAR model \\
+\code{--lidar-points} & 34{,}000 & points per sweep \\
+\code{--buildings} / \code{--max-buildings} / \code{--building-layers} & off / 0 / 3 & building props \\
+\code{--wireframe-buildings} / \code{--no-crosswalks} & off & scenery style \\
+\code{--weather}        & ClearNoon & \code{WeatherParameters} preset \\
+\code{--tm-port} / \code{--speed-diff} & 8000 / 30\% & autopilot Traffic Manager \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{MATLAB entry points}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lp{9.8cm}@{}}
+\toprule
+\textbf{Script} & \textbf{Role} \\
+\midrule
+\file{insert\_intersection.m} & Proof of concept: programmatic 4-way intersection via \code{roadrunnerHDMap} + Scene Builder overlap groups. \\
+\file{load\_nuscenes\_xodr.m} & Direct OpenDRIVE import of a converted scene into the project. \\
+\file{load\_osm\_roads.m} & Georeferenced co-registration of nuScenes and OSM road networks; \code{manualShift} calibration workflow. \\
+\file{nuscenes\_ground\_buildings.m} & Per-scene city scene: roads + real markings + assembled signals + ground slab + OSM buildings, one \file{.rrhd} import. Scene selectable as \code{scene-01..10} or real id. \\
+\file{replay\_agents.m} & Per-scene replay scenario: CSV trajectories, asset mapping, collision pre-pruning, spawn/remove times; auto-builds the city scene if missing. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
