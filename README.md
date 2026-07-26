@@ -54,6 +54,9 @@ python`), `--host/--port` for the CARLA server.
   CARLA loader (see its README for the conversion pipeline)
 - [replay_geo/](replay_geo/) — self-contained replay/alignment tools used by
   stages 4–5 (see its README)
+- [carla_reconstruction/](carla_reconstruction/) — persistent source-built
+  CARLA/Unreal reconstruction: manifest preparation, buildings/vegetation/signs,
+  saved-level editor automation, and trajectory replay on the packaged map
 - [output_roadrunner/](output_roadrunner/) — converted per-scenario inputs:
   `.xodr`, `_meta.json` sidecars, OSM extracts, RoadRunner `_geo.xodr`/`.rrhd`
 - [fullmap/](fullmap/) — full boston-seaport region inputs/outputs

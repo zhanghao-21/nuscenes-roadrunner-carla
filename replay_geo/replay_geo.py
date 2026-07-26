@@ -45,7 +45,7 @@ from matplotlib.lines import Line2D
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-RR_DIR = ROOT / "output_roadrunner"
+RR_DIR = Path(os.environ.get("NUSCENES_RR_OUTPUT", ROOT / "output_roadrunner"))
 # results root; override with REPLAY_GEO_RESULTS (used by main.py -> OUTPUT/)
 RESULTS = Path(os.environ.get("REPLAY_GEO_RESULTS",
                               Path(__file__).resolve().parent / "results"))

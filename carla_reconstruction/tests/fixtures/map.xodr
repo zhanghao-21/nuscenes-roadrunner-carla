@@ -1,0 +1,16 @@
+<OpenDRIVE>
+  <road id="1" length="20" junction="-1">
+    <planView>
+      <geometry s="0" x="0" y="0" hdg="0" length="20"><line/></geometry>
+    </planView>
+    <lanes>
+      <laneSection s="0">
+        <right><lane id="-1"><width a="4" b="0" c="0" d="0"/></lane></right>
+      </laneSection>
+    </lanes>
+    <signals>
+      <signal id="7" s="10" t="-3" zOffset="5" hOffset="0"
+              dynamic="yes" type="1000001"/>
+    </signals>
+  </road>
+</OpenDRIVE>

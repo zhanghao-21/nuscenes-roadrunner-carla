@@ -10,6 +10,7 @@
 /nuscenes2xodr/output/
 /replay_geo/results/
 /viz/
+/carla_reconstruction/generated/
 
 # Generated full-map artifacts (keep the MATLAB source files).
 /fullmap/*.mat

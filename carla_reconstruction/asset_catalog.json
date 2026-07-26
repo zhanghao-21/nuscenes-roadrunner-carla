@@ -1,0 +1,64 @@
+{
+  "buildings": {
+    "small": [
+      "/Game/Carla/Static/Building/BP_House01_1",
+      "/Game/Carla/Static/Building/BP_House04",
+      "/Game/Carla/Static/Building/BP_House05",
+      "/Game/Carla/Static/Building/BP_Mansion04_1"
+    ],
+    "medium": [
+      "/Game/Carla/Static/Building/BP_Block01_1",
+      "/Game/Carla/Static/Building/BP_Block02_1",
+      "/Game/Carla/Static/Building/BP_Block05_1",
+      "/Game/Carla/Static/Building/BP_Apartment01_2"
+    ],
+    "tall": [
+      "/Game/Carla/Static/Building/BP_Office01",
+      "/Game/Carla/Static/Building/BP_Office02_1",
+      "/Game/Carla/Static/Building/BP_Apartment02_3",
+      "/Game/Carla/Static/Building/BP_SkyScraper"
+    ]
+  },
+  "trees": {
+    "temperate": [
+      "/Game/Carla/Static/Vegetation/Trees/SM_Maple_M_v1",
+      "/Game/Carla/Static/Vegetation/Trees/SM_Maple_M_v3",
+      "/Game/Carla/Static/Vegetation/Trees/SM_Oak_M_v1",
+      "/Game/Carla/Static/Vegetation/Trees/SM_Ash_01"
+    ],
+    "tropical": [
+      "/Game/Carla/Static/Vegetation/Trees/SM_Aporosa",
+      "/Game/Carla/Static/Vegetation/Trees/SM_CoconutPalm_01",
+      "/Game/Carla/Static/Vegetation/Trees/SM_FanPalm_01",
+      "/Game/Carla/Static/Vegetation/Trees/SM_FanPalm_02"
+    ]
+  },
+  "traffic_signs": {
+    "stop": "/Game/Carla/Static/TrafficSign/BP_Stop",
+    "yield": "/Game/Carla/Static/TrafficSign/BP_Yield",
+    "speed_limit_30": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit30",
+    "speed_limit_40": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit40",
+    "speed_limit_50": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit50",
+    "speed_limit_60": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit60",
+    "speed_limit_70": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit70",
+    "speed_limit_80": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit80",
+    "speed_limit_90": "/Game/Carla/Static/TrafficSign/BP_SpeedLimit90"
+  },
+  "nuscenes_static_objects": {
+    "movable_object.barrier": [
+      "/Game/Carla/Static/Dynamic/Construction/SM_StreetBarrier",
+      "/Game/Carla/Static/Static/SM_Barrier"
+    ],
+    "movable_object.trafficcone": [
+      "/Game/Carla/Static/Dynamic/Construction/SM_TrafficCones_01",
+      "/Game/Carla/Static/Dynamic/Construction/SM_TrafficCones_02",
+      "/Game/Carla/Static/Dynamic/Construction/SM_TrafficCones_03"
+    ],
+    "movable_object.debris": [
+      "/Game/Carla/Static/Other/SM_DirtDebris01",
+      "/Game/Carla/Static/Other/SM_DirtDebris02",
+      "/Game/Carla/Static/Other/SM_DirtDebris03"
+    ]
+  },
+  "traffic_light": "/Game/Carla/Static/TrafficLight/Streetlights_01/BP_TrafficLightNew"
+}

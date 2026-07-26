@@ -1,0 +1,4 @@
+[
+  {"token": "sample-1", "anns": ["ann-cone-1", "ann-car"], "next": "sample-2"},
+  {"token": "sample-2", "anns": ["ann-cone-2"], "next": ""}
+]

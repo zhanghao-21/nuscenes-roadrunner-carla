@@ -39,8 +39,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-RR_DIR = ROOT / "output_roadrunner"
-NUSC = ROOT / "v1.0-mini"                    # dataroot (images relative to it)
+RR_DIR = Path(os.environ.get("NUSCENES_RR_OUTPUT", ROOT / "output_roadrunner"))
+NUSC = Path(os.environ.get("NUSCENES_DATAROOT", ROOT / "v1.0-mini"))
 TABLES = NUSC / "v1.0-mini"                  # the json tables
 # results root; override with REPLAY_GEO_RESULTS (used by main.py -> OUTPUT/)
 RESULTS = Path(os.environ.get("REPLAY_GEO_RESULTS", HERE / "results"))

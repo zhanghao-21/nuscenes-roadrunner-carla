@@ -1,0 +1,5 @@
+[
+  {"token": "ann-cone-1", "sample_token": "sample-1", "instance_token": "instance-cone", "translation": [110, 220, 0.5], "size": [0.5, 0.5, 1.0], "rotation": [1, 0, 0, 0]},
+  {"token": "ann-cone-2", "sample_token": "sample-2", "instance_token": "instance-cone", "translation": [110, 220, 0.5], "size": [0.5, 0.5, 1.0], "rotation": [1, 0, 0, 0]},
+  {"token": "ann-car", "sample_token": "sample-1", "instance_token": "instance-car", "translation": [115, 225, 1.0], "size": [2.0, 4.0, 1.5], "rotation": [1, 0, 0, 0]}
+]

@@ -1,0 +1,13 @@
+<osm>
+  <node id="1" lat="42.336849169438615" lon="-71.05785369873047">
+    <tag k="natural" v="tree"/>
+  </node>
+  <node id="2" lat="42.336849169438615" lon="-71.05784369873047">
+    <tag k="highway" v="stop"/>
+  </node>
+  <node id="3" lat="42.336859169438615" lon="-71.05785369873047"/>
+  <way id="4">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="1"/>
+    <tag k="leisure" v="park"/>
+  </way>
+</osm>
