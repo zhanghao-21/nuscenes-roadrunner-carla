@@ -1,7 +1,90 @@
-"""Read road samples and signal poses from OpenDRIVE 1.4 files."""
+"""Read and prepare OpenDRIVE 1.4 files for CARLA."""
 
 import math
+import os
+import shutil
+import tempfile
 import xml.etree.ElementTree as ET
+
+
+def remap_colliding_junction_ids(root):
+    """Move junction IDs that collide with road IDs to unused values.
+
+    OpenDRIVE gives roads and junctions separate identifier domains, but
+    CARLA 0.9.15's map builder identifies a junction successor by checking
+    that its numeric ID is not also a road ID. A collision therefore turns an
+    intersection entrance into a dead end in ``Waypoint.next()``.
+    """
+    road_ids = {int(road.get("id")) for road in root.findall("road")}
+    junctions = root.findall("junction")
+    junction_ids = {int(junction.get("id")) for junction in junctions}
+    collisions = sorted(road_ids & junction_ids)
+    if not collisions:
+        return {}
+
+    used = road_ids | junction_ids
+    candidate = max(used, default=0) + 1
+    mapping = {}
+    for old_id in collisions:
+        while candidate in used:
+            candidate += 1
+        mapping[old_id] = candidate
+        used.add(candidate)
+        candidate += 1
+
+    for junction in junctions:
+        old_id = int(junction.get("id"))
+        if old_id in mapping:
+            junction.set("id", str(mapping[old_id]))
+
+    for road in root.findall("road"):
+        junction_id = int(road.get("junction", "-1"))
+        if junction_id in mapping:
+            road.set("junction", str(mapping[junction_id]))
+        link = road.find("link")
+        if link is None:
+            continue
+        for tag in ("predecessor", "successor"):
+            endpoint = link.find(tag)
+            if endpoint is None or endpoint.get("elementType") != "junction":
+                continue
+            old_id = int(endpoint.get("elementId"))
+            if old_id in mapping:
+                endpoint.set("elementId", str(mapping[old_id]))
+
+    for reference in root.findall(".//junctionReference"):
+        old_id = int(reference.get("junction", "-1"))
+        if old_id in mapping:
+            reference.set("junction", str(mapping[old_id]))
+    return mapping
+
+
+def write_carla_compatible_xodr(source_path, target_path):
+    """Copy an XODR while repairing CARLA-incompatible junction ID clashes."""
+    source_path = os.path.abspath(os.fspath(source_path))
+    target_path = os.path.abspath(os.fspath(target_path))
+    tree = ET.parse(source_path)
+    mapping = remap_colliding_junction_ids(tree.getroot())
+    same_path = os.path.normcase(source_path) == os.path.normcase(target_path)
+    if not mapping:
+        if not same_path:
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            shutil.copy2(source_path, target_path)
+        return mapping
+
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    ET.indent(tree, space="    ")
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=os.path.basename(target_path) + ".", suffix=".tmp",
+        dir=os.path.dirname(target_path))
+    os.close(descriptor)
+    try:
+        tree.write(temporary, encoding="utf-8", xml_declaration=True)
+        os.replace(temporary, target_path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return mapping
 
 
 def _geometry_pose(geometry, distance):

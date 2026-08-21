@@ -56,14 +56,14 @@ def to_unreal(manifest, x, y, z, yaw_rad):
     return location, rotation
 
 
-def mark_actor(actor, label, folder):
+def mark_actor(actor, label, folder, collision=True):
     actor.set_actor_label(PREFIX + label)
     actor.set_folder_path(unreal.Name("NuScenesGenerated/" + folder))
     tags = list(actor.get_editor_property("tags"))
     if TAG not in tags:
         tags.append(TAG)
         actor.set_editor_property("tags", tags)
-    actor.set_actor_enable_collision(True)
+    actor.set_actor_enable_collision(collision)
 
 
 def delete_previous():
@@ -103,6 +103,100 @@ def spawn_asset(path, location, rotation):
         return None
     return unreal.EditorLevelLibrary.spawn_actor_from_object(
         asset, location, rotation, transient=False)
+
+
+def apply_road_surface_material(manifest, catalog):
+    """Replace RoadRunner's BadDefault surface on the copied level only."""
+    material_path = catalog.get("materials", {}).get("road_asphalt")
+    material = load_asset(material_path) if material_path else None
+    if material is None:
+        warn("road asphalt material is unavailable; retaining imported surface")
+        return 0
+    package_fragment = "/Game/%s/" % manifest["map"]["package_name"]
+    changed = 0
+    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+        component = actor.get_component_by_class(unreal.StaticMeshComponent)
+        if component is None:
+            continue
+        mesh = component.get_editor_property("static_mesh")
+        if mesh is None:
+            continue
+        mesh_path = mesh.get_path_name()
+        if package_fragment not in mesh_path or "RoadsNode" not in mesh_path:
+            continue
+        slot_count = max(1, len(mesh.get_editor_property("static_materials")))
+        for slot in range(slot_count):
+            component.set_material(slot, material)
+        changed += 1
+        log("applied asphalt to %s (%s)" % (actor.get_actor_label(), mesh_path))
+    if changed == 0:
+        warn("could not find the imported RoadsNode actor in the copied level")
+    return changed
+
+
+def import_lane_marking_asset(manifest, obj_path):
+    if not os.path.isfile(obj_path):
+        raise RuntimeError("lane-marking OBJ not found: " + obj_path)
+    asset_name = manifest["map"]["asset_name"] + "_LaneMarkings"
+    destination = "/Game/%s/Static/Marking/%s" % (
+        manifest["map"]["package_name"], manifest["map"]["asset_name"])
+
+    options = unreal.FbxImportUI()
+    options.set_editor_property("import_as_skeletal", False)
+    options.set_editor_property("import_animations", False)
+    options.set_editor_property("import_materials", True)
+    options.set_editor_property("import_textures", False)
+    static_data = options.get_editor_property("static_mesh_import_data")
+    static_data.set_editor_property("combine_meshes", True)
+    static_data.set_editor_property("convert_scene", False)
+    static_data.set_editor_property("convert_scene_unit", False)
+    static_data.set_editor_property("generate_lightmap_u_vs", False)
+
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", obj_path)
+    task.set_editor_property("destination_path", destination)
+    task.set_editor_property("destination_name", asset_name)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("replace_existing_settings", True)
+    task.set_editor_property("save", True)
+    task.set_editor_property("options", options)
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    object_paths = list(task.get_editor_property("imported_object_paths"))
+    expected = destination + "/" + asset_name
+    mesh = load_asset(expected)
+    if mesh is None:
+        candidates = [path for path in object_paths
+                      if isinstance(load_asset(path), unreal.StaticMesh)]
+        mesh = load_asset(candidates[0]) if candidates else None
+    if mesh is None:
+        raise RuntimeError("Unreal did not import a lane-marking StaticMesh from " + obj_path)
+    log("imported lane-marking mesh %s" % mesh.get_path_name())
+    return mesh
+
+
+def add_lane_markings(manifest, catalog, mesh):
+    actor = unreal.EditorLevelLibrary.spawn_actor_from_object(
+        mesh, unreal.Vector(), unreal.Rotator(), transient=False)
+    if actor is None:
+        raise RuntimeError("failed to spawn imported lane-marking mesh")
+    component = actor.get_component_by_class(unreal.StaticMeshComponent)
+    if component is None:
+        raise RuntimeError("lane-marking actor has no StaticMeshComponent")
+
+    materials = catalog.get("materials", {})
+    white = load_asset(materials.get("lane_marking_white"))
+    yellow = load_asset(materials.get("lane_marking_yellow"))
+    static_materials = list(mesh.get_editor_property("static_materials"))
+    for index, slot in enumerate(static_materials):
+        slot_name = str(slot.get_editor_property("material_slot_name"))
+        chosen = yellow if "yellow" in slot_name.lower() else white
+        if chosen is not None:
+            component.set_material(index, chosen)
+            log("lane-marking slot %s -> %s" % (slot_name, chosen.get_path_name()))
+    component.set_editor_property("receives_decals", False)
+    mark_actor(actor, "LaneMarkings_OpenDRIVE", "LaneMarkings", collision=False)
+    return 1
 
 
 def building_group(building):
@@ -233,19 +327,10 @@ def add_traffic_lights(manifest, catalog):
     if os.environ.get("NUSC_CARLA_PLACE_TRAFFIC_LIGHTS", "0") != "1":
         log("traffic-light placement disabled; OpenDRIVE signals remain authoritative")
         return 0
-    warn("placing traffic-light Blueprints without automatic junction grouping; validate triggers manually")
-    asset_path = catalog.get("traffic_light")
-    added = 0
-    for light in manifest["environment"].get("traffic_lights", []):
-        location, rotation = to_unreal(
-            manifest, light["x"], light["y"], 0.0, light["yaw_rad"])
-        actor = spawn_blueprint(asset_path, location, rotation) if asset_path else None
-        if actor is None:
-            continue
-        mark_actor(actor, "TrafficLight_" + str(light["id"]), "TrafficLights")
-        added += 1
-    log("added %d traffic lights" % added)
-    return added
+    raise RuntimeError(
+        "traffic-light Blueprint placement is disabled until CARLA junction "
+        "groups/controllers are generated; ungrouped BP_TrafficLightNew actors "
+        "crash WorldObserver during Python API connections")
 
 
 def prepare_level(source_level, target_level):
@@ -273,9 +358,13 @@ def main():
     catalog = read_json(catalog_path)
     log("building %s into %s" % (manifest["scene"], target_level))
     prepare_level(source_level, target_level)
+    marking_mesh = import_lane_marking_asset(
+        manifest, required_env("NUSC_CARLA_MARKINGS_OBJ"))
     with unreal.ScopedEditorTransaction("Rebuild nuScenes environment"):
         delete_previous()
         counts = {
+            "road_surfaces": apply_road_surface_material(manifest, catalog),
+            "lane_markings": add_lane_markings(manifest, catalog, marking_mesh),
             "buildings": add_buildings(manifest, catalog),
             "trees": add_trees(manifest, catalog),
             "traffic_signs": add_signs(manifest, catalog),
@@ -284,6 +373,11 @@ def main():
         }
     if not unreal.EditorLevelLibrary.save_current_level():
         raise RuntimeError("Unreal failed to save the current level")
+    result_path = required_env("NUSC_CARLA_RESULT")
+    with open(result_path, "w") as stream:
+        json.dump({"status": "success", "target_level": target_level,
+                   "counts": counts}, stream, indent=2)
+        stream.write("\n")
     log("saved %s with %s" % (target_level, counts))
 
 

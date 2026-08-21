@@ -1,7 +1,11 @@
 function fbxPath = export_roadrunner_base(manifestPath, projectFolder, outputFolder, installFolder)
-%EXPORT_ROADRUNNER_BASE Programmatically export a road-only FBX for CARLA.
+%EXPORT_ROADRUNNER_BASE Programmatically export CARLA road geometry.
 %   The manifest OpenDRIVE is imported in its existing patch-local frame, so
 %   the FBX, Unreal decorations, and recorded trajectories share one origin.
+%   CARLA Filmbox is intentional: unlike generic Filmbox, it exports meshes
+%   split by semantic class and .rrdata.xml material metadata for CARLA's
+%   RoadRunner importer.  If a project has no renderable marking asset, the
+%   Unreal decoration stage generates the visual markings from OpenDRIVE.
 
 arguments
     manifestPath (1,1) string
@@ -45,6 +49,24 @@ importScene(rrApp, xodrPath, "OpenDRIVE", opts);
 saveScene(rrApp, assetName + "_CARLA_Base");
 
 fbxPath = fullfile(outputFolder, assetName + ".fbx");
-exportScene(rrApp, fbxPath, "Filmbox");
-fprintf("Exported CARLA road base: %s\n", fbxPath);
+fbxOptions = filmboxExportOptions( ...
+    SplitMeshes=true, ...
+    ResizeTextureDimensions=true, ...
+    EmbedTextures=true);
+xodrOptions = openDriveExportOptions( ...
+    OpenDriveVersion=1.5, ...
+    ExportMarkingsAsLine=true, ...
+    ExportSignals=false, ...
+    ExportObjects=true);
+carlaOptions = carlaFilmboxExportOptions( ...
+    FilmboxOptions=fbxOptions, ...
+    OpenDriveOptions=xodrOptions);
+exportScene(rrApp, fbxPath, "CARLA Filmbox", carlaOptions);
+
+rrdataPath = fullfile(outputFolder, assetName + ".rrdata.xml");
+assert(isfile(fbxPath), "RoadRunner did not create FBX: " + fbxPath);
+assert(isfile(rrdataPath), ...
+    "CARLA Filmbox did not create material metadata: " + rrdataPath);
+fprintf("Exported CARLA road geometry: %s\n", fbxPath);
+fprintf("Exported CARLA material metadata: %s\n", rrdataPath);
 end

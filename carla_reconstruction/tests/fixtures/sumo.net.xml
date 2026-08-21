@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<net version="1.16">
+  <location netOffset="10.0,20.0" convBoundary="10.0,20.0,30.0,20.0"
+            origBoundary="0.0,0.0,20.0,0.0" projParameter="!"/>
+  <edge id="a" from="n0" to="n1">
+    <lane id="a_0" index="0" speed="13.9" length="10.0"
+          shape="10.0,20.0 20.0,20.0"/>
+  </edge>
+  <edge id="b" from="n1" to="n2">
+    <lane id="b_0" index="0" speed="13.9" length="10.0"
+          shape="20.0,20.0 30.0,20.0"/>
+  </edge>
+  <connection from="a" to="b" fromLane="0" toLane="0"/>
+</net>

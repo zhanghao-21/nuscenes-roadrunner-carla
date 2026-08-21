@@ -60,5 +60,10 @@
       "/Game/Carla/Static/Other/SM_DirtDebris03"
     ]
   },
-  "traffic_light": "/Game/Carla/Static/TrafficLight/Streetlights_01/BP_TrafficLightNew"
+  "traffic_light": "/Game/Carla/Static/TrafficLight/Streetlights_01/BP_TrafficLightNew",
+  "materials": {
+    "road_asphalt": "/Game/Carla/Static/GenericMaterials/RoadPainterMaterials/MI_Road_Asphalt",
+    "lane_marking_white": "/Game/Carla/Static/GenericMaterials/RoadPainterMaterials/LaneMarkings/MI_LaneMarking_Asphalt",
+    "lane_marking_yellow": "/Game/Carla/Static/GenericMaterials/RoadPainterMaterials/LaneMarkings/MI_LaneMarkingYellow_Asphalt"
+  }
 }
