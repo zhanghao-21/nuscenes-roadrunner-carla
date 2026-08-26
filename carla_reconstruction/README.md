@@ -80,11 +80,30 @@ and produces the FBX plus `.rrdata.xml` material metadata with meshes split by
 semantic class. The local staging command requires that metadata and keeps the
 original nuScenes-derived OpenDRIVE as the runtime authority.
 
+The export block below is **MATLAB code, not an Anaconda Prompt command**.
+Run it from the MATLAB Command Window (or save it as a `.m` script). Start
+MATLAB, then paste the following example for scene-0553:
+
 ```matlab
-manifest = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json";
+addpath("D:\nuscenes-roadrunner-carla\carla_reconstruction");
+
+manifest = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json";
 project = "D:\nuscenes-roadrunner-carla\nuscenes_test1";
 out = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\fbx";
 fbx = export_roadrunner_base(manifest, project, out);
+```
+
+Wait until MATLAB prints both `Exported CARLA road geometry` and `Exported
+CARLA material metadata`. For scene-0553, the required outputs are
+`Nusc_boston_seaport_0553.fbx` and
+`Nusc_boston_seaport_0553.rrdata.xml` in `generated\fbx`.
+
+As an alternative, the same MATLAB export can be launched from an Anaconda
+Prompt at the repository root. This works because `matlab` is on this machine's
+`PATH`; the quoted text after `-batch` is still evaluated by MATLAB:
+
+```bat
+matlab -batch "addpath('D:\nuscenes-roadrunner-carla\carla_reconstruction'); manifest='D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json'; project='D:\nuscenes-roadrunner-carla\nuscenes_test1'; out='D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\fbx'; export_roadrunner_base(manifest, project, out);"
 ```
 
 The exporter defaults to the installed RoadRunner R2024a location:
@@ -92,21 +111,35 @@ The exporter defaults to the installed RoadRunner R2024a location:
 if that installation moves. It also recreates the ignored `Assets`, `Exports`,
 `Scenes`, and `Scenarios` folders in the local RoadRunner project when needed.
 
-Then stage the CARLA import package locally:
+`prepare_scene.py --scene all` creates manifests only; it does not export FBX
+files. Export every new scene separately, always pairing a manifest with the
+FBX and `.rrdata.xml` generated from that same manifest.
+
+After one scene's FBX export succeeds, return to the Anaconda Prompt at
+`D:\nuscenes-roadrunner-carla` and stage that scene's CARLA import package.
+The staging tool accepts one manifest/FBX pair per invocation. Example for
+scene-0553:
 
 ```bat
 python carla_reconstruction\tools\prepare_import_package.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
-  --fbx carla_reconstruction\generated\fbx\Nusc_boston_seaport_0103.fbx ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json ^
+  --fbx carla_reconstruction\generated\fbx\Nusc_boston_seaport_0553.fbx ^
   --output-root carla_reconstruction\generated\import
 ```
 
-Review the staged package. Copy it to `C:\carla\Import` only when ready, then
-run CARLA's normal `make import` process. For this example the imported source
-level is
-`/Game/Nusc_boston_seaport_0103/Maps/Nusc_boston_seaport_0103/Nusc_boston_seaport_0103`.
+Repeat the MATLAB export and Python staging command for each new scene, changing
+both paths together. Reusing the scene-0103 command only rebuilds scene-0103;
+it does not discover the other manifests. The common `generated\import` output
+root is intentional: each map is placed in its own uniquely named package
+folder, so separately staged scenes do not overwrite one another.
+
+Review the staged packages. Copy only the new package folders to
+`C:\carla\Import` when ready, then run CARLA's normal `make import` process.
+For scene-0553 the expected imported source level is
+`/Game/Nusc_boston_seaport_0553/Maps/Nusc_boston_seaport_0553/Nusc_boston_seaport_0553`.
 The staging tool intentionally refuses to write directly into the CARLA
-repository.
+repository. After import, run the decoration and finalization commands in the
+next section once per manifest.
 
 ## 4. Decorate a copied Unreal level
 
