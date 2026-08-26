@@ -19,7 +19,8 @@ from carla_reconstruction.closed_loop.carla_runtime import (  # noqa: E402
     configure_tm_actor, default_run_output, place_from_point, spawn_track_actor)
 from carla_reconstruction.closed_loop.metrics import SafetyMetrics  # noqa: E402
 from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
-    load_manifest_tracks, point_at)
+    DEFAULT_MINIMUM_TRACK_DISTANCE_M, DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS,
+    classify_vehicle_motion, load_manifest_tracks, point_at)
 
 
 def run(args):
@@ -71,8 +72,12 @@ def run(args):
             args.minimum_speed_kmh)
     collision_monitor = CollisionMonitor(world, ego, metrics, lambda: clock[0])
 
-    vehicle_tracks = [track for track in bundle.vehicle_tracks.values()
-                      if len(track.points) >= 2]
+    vehicle_tracks = [
+        track for track in bundle.vehicle_tracks.values()
+        if classify_vehicle_motion(
+            track, args.minimum_track_distance,
+            args.minimum_two_point_speed) is not None
+    ]
     vehicle_tracks.sort(key=lambda track: (track.start_time, track.actor_id))
     if args.max_vehicles > 0:
         vehicle_tracks = vehicle_tracks[:args.max_vehicles]
@@ -86,7 +91,10 @@ def run(args):
         for actor_id, track in list(waiting.items()):
             if track.start_time > sim_time + 1.0e-9:
                 continue
-            moving = track.is_vehicle and track.distance >= args.minimum_track_distance
+            moving = (
+                classify_vehicle_motion(
+                    track, args.minimum_track_distance,
+                    args.minimum_two_point_speed) == "moving")
             actor, offset = spawn_track_actor(
                 world, track, projector, "nuscenes_agent", physics=moving)
             del waiting[actor_id]
@@ -193,8 +201,14 @@ def main():
     parser.add_argument("--ego-mode", choices=("replay", "tm", "external"), default="replay")
     parser.add_argument("--max-vehicles", type=int, default=0,
                         help="maximum moving/static surrounding vehicles; 0 means all")
-    parser.add_argument("--minimum-track-distance", type=float, default=2.0,
-                        help="shorter vehicle tracks remain static instead of entering TM")
+    parser.add_argument(
+        "--minimum-track-distance", type=float,
+        default=DEFAULT_MINIMUM_TRACK_DISTANCE_M,
+        help="shorter vehicle tracks remain static instead of entering TM")
+    parser.add_argument(
+        "--minimum-two-point-speed", type=float,
+        default=DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS,
+        help="speed that identifies a moving vehicle from exactly two observations")
     parser.add_argument("--path-spacing", type=float, default=2.0)
     parser.add_argument("--leading-distance", type=float, default=2.5)
     parser.add_argument("--minimum-speed-kmh", type=float, default=3.0)

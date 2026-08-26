@@ -233,9 +233,39 @@ python replay_geo\make_gifs.py --scene 0103
 
 The replay above remains the open-loop reference. A separate closed-loop
 framework now provides a CARLA Traffic Manager baseline, SUMO background
-traffic, CARLA-physics ego/critical actors, deterministic critical-braking
-variants, and safety metrics. Continue with the Anaconda Prompt instructions
-in [closed_loop/README.md](closed_loop/README.md).
+traffic for moving vehicles, CARLA-fixed recorded parked vehicles,
+CARLA-physics ego/critical actors, deterministic critical-braking variants,
+and safety metrics. SUMO route preparation now matches through internal
+junction connectors, rejects opposite-direction/backward matches, preserves
+the recorded edge sequence as a route prefix, and adds a seeded valid
+continuation to a road end (or a duration-sized cyclic tail). It also audits
+every mover's insert/mirror/complete lifecycle. A moving SUMO actor whose source
+track ends in a persistent stationary tail is released from speed replay and
+continues autonomously on its already prepared route; releasing the speed
+target does not replace that route or immediately choose another turn. Runtime
+extension is proactive near an unintended route tail and appends beyond the
+existing route with a complete path to a genuine boundary or reusable cycle;
+preparation and runtime both reject acyclic interior dead ends. Guarded
+recovery first preserves the recorded immediate turn
+and replaces only its generated suffix with a viable route to a map boundary
+or cycle, following any forced prefix until a usable branch and never retrying
+a suffix branch that already failed. If recorded-speed replay is active during
+an unguarded persistent stop, recovery releases only that speed authority
+first; any route mutation requires another full autonomous persistence window.
+It acts while scheduled stops, close leaders, and red/yellow signals remain
+under normal SUMO control. An
+immediate different turn is only a last resort, installs a complete viable
+continuation, and retries a distinct branch if that choice remains stuck.
+Interior conversion stubs are rejected. A true map-boundary road end with no
+valid outgoing connection is never extended.
+
+Recorded parked vehicles remain at their true CARLA roadside poses, but their
+CARLA-to-SUMO spawn notifications are filtered. SUMO therefore controls only
+the classified moving background vehicles and cannot mistake a lane-mapped
+shadow of an off-road parked car for a stopped leader. Ego and critical CARLA
+actors remain mirrored into SUMO because they are dynamic participants.
+Continue with the Anaconda Prompt instructions in
+[closed_loop/README.md](closed_loop/README.md).
 
 ## Current validation boundary
 

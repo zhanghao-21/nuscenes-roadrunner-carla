@@ -41,13 +41,26 @@ def spawn_track_actor(world, track, projector, role_name, physics=True):
     if actor is None:
         transform.location.z += 2.0
         actor = world.try_spawn_actor(blueprint, transform)
+    if actor is None and not physics:
+        # CARLA's spawn collision check can reject a dense but valid recorded
+        # parked-vehicle layout.  Create a physics-disabled actor well above
+        # the scene, then place it at the authoritative recorded pose below.
+        # This mirrors the elevated-spawn technique used by CARLA's SUMO
+        # bridge, without bypassing collision checks for physics actors.
+        transform.location.z = projector.z(x, y) + 25.0
+        actor = world.try_spawn_actor(blueprint, transform)
     if actor is None:
         return None, None
     try:
         actor.set_simulate_physics(bool(physics))
     except Exception:
         pass
-    return actor, legacy._z_offset(actor)
+    offset = legacy._z_offset(actor)
+    if not physics:
+        # Physics-disabled replay/static actors do not settle under gravity.
+        # Put their bounding-box bottom on the projected road immediately.
+        place_from_point(actor, point, projector, offset)
+    return actor, offset
 
 
 def place_from_point(actor, point, projector, z_offset):
@@ -84,12 +97,15 @@ def configure_tm_actor(traffic_manager, actor, track, tm_port,
 
 
 def actor_state(actor):
-    location = actor.get_location()
+    transform = actor.get_transform()
+    location = transform.location
     velocity = actor.get_velocity()
     extent = actor.bounding_box.extent
+    yaw = math.radians(transform.rotation.yaw)
     return {
         "position": (location.x, location.y),
         "velocity": (velocity.x, velocity.y),
+        "heading": (math.cos(yaw), math.sin(yaw)),
         "radius": math.hypot(extent.x, extent.y),
     }
 

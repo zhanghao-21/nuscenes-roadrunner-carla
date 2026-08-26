@@ -1,0 +1,18 @@
+# Optional HGT trajectory-prediction and live risk-dashboard dependencies.
+#
+# Install these with the same Python interpreter that runs CARLA/SUMO.  The
+# documented CARLA 0.9.15 client uses Python 3.7, so use:
+#
+#   python -m pip install -r carla_reconstruction\requirements-prediction.txt
+#
+# Versions are intentionally not pinned here: the suitable PyTorch wheel
+# depends on the host's CPU/CUDA setup, and the target environment must retain
+# Python 3.7 compatibility.  For a CUDA build, install the appropriate
+# Python-3.7-compatible PyTorch wheel first; the requirement below will then be
+# satisfied without replacing it.
+
+numpy
+PyYAML
+torch
+pyqtgraph
+PyQt5

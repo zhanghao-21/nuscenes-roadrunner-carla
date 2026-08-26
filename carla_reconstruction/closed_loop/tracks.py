@@ -7,6 +7,9 @@ import os
 
 
 DYNAMIC_PREFIXES = ("vehicle.", "human.pedestrian.")
+DEFAULT_MINIMUM_TRACK_DISTANCE_M = 2.0
+DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS = 1.0
+DEFAULT_MAXIMUM_TWO_POINT_DURATION_S = 0.5
 
 
 def normalize_angle(angle):
@@ -25,6 +28,62 @@ def actor_kind(category):
         if kind in category:
             return kind
     return "car"
+
+
+def validated_minimum_track_distance(value):
+    """Return a finite, non-negative movement-classification boundary."""
+    if isinstance(value, bool):
+        raise ValueError("minimum_track_distance must be a non-negative number")
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "minimum_track_distance must be a non-negative number")
+    if not math.isfinite(result) or result < 0.0:
+        raise ValueError("minimum_track_distance must be a non-negative number")
+    return result
+
+
+def validated_minimum_two_point_speed(value):
+    """Return a finite, non-negative two-observation speed boundary."""
+    if isinstance(value, bool):
+        raise ValueError(
+            "minimum_two_point_speed must be a non-negative number")
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "minimum_two_point_speed must be a non-negative number")
+    if not math.isfinite(result) or result < 0.0:
+        raise ValueError(
+            "minimum_two_point_speed must be a non-negative number")
+    return result
+
+
+def classify_vehicle_motion(
+        track, minimum_track_distance=DEFAULT_MINIMUM_TRACK_DISTANCE_M,
+        minimum_two_point_speed=DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS):
+    """Classify a recorded vehicle track as ``moving``, ``static``, or absent.
+
+    This shared classifier is used by both the Traffic Manager and hybrid
+    baselines. Tracks with insufficient observations and non-vehicles return
+    ``None`` because their motion state cannot be established here.
+    """
+    threshold = validated_minimum_track_distance(minimum_track_distance)
+    short_speed = validated_minimum_two_point_speed(minimum_two_point_speed)
+    if not track.is_vehicle or len(track.points) < 2:
+        return None
+    # Accumulated annotation jitter can exceed a distance threshold even when
+    # a parked actor never leaves a small area.  Spatial extent measures actual
+    # separation between observations and is robust to that back-and-forth
+    # noise.  A two-observation track gets one narrow velocity escape hatch so
+    # a genuinely moving actor seen only at the end of a scene is not lost.
+    moving = track.motion_extent >= threshold
+    if (len(track.points) == 2 and
+            track.duration <= DEFAULT_MAXIMUM_TWO_POINT_DURATION_S + 1.0e-9 and
+            track.mean_speed >= short_speed):
+        moving = True
+    return "moving" if moving else "static"
 
 
 @dataclass(frozen=True)
@@ -70,10 +129,38 @@ class ActorTrack:
                    for a, b in zip(self.points, self.points[1:]))
 
     @property
+    def net_displacement(self):
+        if len(self.points) < 2:
+            return 0.0
+        first, last = self.points[0], self.points[-1]
+        return math.hypot(last.x - first.x, last.y - first.y)
+
+    @property
+    def motion_extent(self):
+        """Maximum separation between any two recorded observations."""
+        maximum = 0.0
+        for index, left in enumerate(self.points):
+            for right in self.points[index + 1:]:
+                maximum = max(
+                    maximum, math.hypot(
+                        right.x - left.x, right.y - left.y))
+        return maximum
+
+    @property
     def mean_speed(self):
         if self.duration <= 1.0e-9:
             return 0.0
         return self.distance / self.duration
+
+    @property
+    def peak_speed(self):
+        speeds = [
+            math.hypot(right.x - left.x, right.y - left.y) /
+            (right.time - left.time)
+            for left, right in zip(self.points, self.points[1:])
+            if right.time > left.time
+        ]
+        return max(speeds, default=0.0)
 
     @property
     def initial_speed(self):
@@ -82,6 +169,22 @@ class ActorTrack:
         a, b = self.points[0], self.points[1]
         dt = b.time - a.time
         return math.hypot(b.x - a.x, b.y - a.y) / dt if dt > 0 else 0.0
+
+
+def recorded_speed_at(track, time_seconds):
+    """Return the recorded segment speed, or ``None`` outside the track."""
+    if (len(track.points) < 2 or
+            time_seconds < track.start_time or
+            time_seconds >= track.end_time):
+        return None
+    for left, right in zip(track.points, track.points[1:]):
+        if left.time <= time_seconds < right.time:
+            dt = right.time - left.time
+            if dt <= 0.0:
+                continue
+            return math.hypot(
+                right.x - left.x, right.y - left.y) / dt
+    return None
 
 
 @dataclass

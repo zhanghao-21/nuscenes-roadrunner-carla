@@ -18,6 +18,9 @@ Fixes applied per file:
   6. Lane-level <link> elements added to connecting-road driving lanes,
      mirroring the road-level predecessor/successor (RoadRunner and other
      tools use these for maneuver topology).
+  7. Junction IDs that collide with road IDs are remapped. CARLA 0.9.15 uses
+     numeric ID presence to distinguish roads from junctions; a collision
+     otherwise makes every incoming lane a waypoint dead end.
 
 Usage:
     python fix_xodr_for_roadrunner.py [--in DIR] [--out DIR]
@@ -44,6 +47,45 @@ EARTH_R = 6378137.0
 SNAP_TOL = 2.0      # m: max gap to snap a connector endpoint across
 DP_TOL = 0.03       # m: Douglas-Peucker lateral tolerance
 BOUNDS_PAD = 10.0   # m: margin added around geometry in the header bounds
+
+
+def remap_colliding_junction_ids(root):
+    """Return and apply the road/junction ID collision mapping."""
+    road_ids = {int(road.get("id")) for road in root.findall("road")}
+    junctions = root.findall("junction")
+    junction_ids = {int(junction.get("id")) for junction in junctions}
+    collisions = sorted(road_ids & junction_ids)
+    used = road_ids | junction_ids
+    candidate = max(used, default=0) + 1
+    mapping = {}
+    for old_id in collisions:
+        while candidate in used:
+            candidate += 1
+        mapping[old_id] = candidate
+        used.add(candidate)
+        candidate += 1
+    if not mapping:
+        return mapping
+
+    for junction in junctions:
+        old_id = int(junction.get("id"))
+        if old_id in mapping:
+            junction.set("id", str(mapping[old_id]))
+    for road in root.findall("road"):
+        junction_id = int(road.get("junction", "-1"))
+        if junction_id in mapping:
+            road.set("junction", str(mapping[junction_id]))
+        link = road.find("link")
+        if link is None:
+            continue
+        for tag in ("predecessor", "successor"):
+            endpoint = link.find(tag)
+            if endpoint is None or endpoint.get("elementType") != "junction":
+                continue
+            old_id = int(endpoint.get("elementId"))
+            if old_id in mapping:
+                endpoint.set("elementId", str(mapping[old_id]))
+    return mapping
 
 
 def local_to_latlon(map_name, x, y):
@@ -127,9 +169,11 @@ def rebuild_planview(road, pts):
 def fix_file(xodr_path, out_path, meta):
     tree = ET.parse(xodr_path)
     root = tree.getroot()
+    junction_mapping = remap_colliding_junction_ids(root)
     roads = {r.get("id"): r for r in root.findall("road")}
     stats = {"snapped": 0, "marks_center": 0, "marks_edge": 0,
-             "lane_links": 0, "segs_before": 0, "segs_after": 0}
+             "lane_links": 0, "segs_before": 0, "segs_after": 0,
+             "junction_ids": len(junction_mapping)}
 
     # -- extract all polylines up front (snapping needs neighbours' endpoints)
     polys = {rid: extract_polyline(r) for rid, r in roads.items()}
@@ -256,6 +300,7 @@ def main():
         print(f"    marking defaults  : {st['marks_center']} center, "
               f"{st['marks_edge']} edge")
         print(f"    lane-level links  : {st['lane_links']} connector lanes")
+        print(f"    junction IDs fixed: {st['junction_ids']}")
         print(f"    plan-view segments: {st['segs_before']} -> "
               f"{st['segs_after']}")
     print(f"\nDone -> {os.path.abspath(args.outdir)}")

@@ -508,7 +508,10 @@ def _convert_one(nusc, nmap, scene, map_name, out_path, args):
     # assign junction ids (only clusters that contain >=1 usable connector)
     junction_of_conn = {}
     junction_ids = {}
-    next_jid = 1
+    # CARLA 0.9.15 distinguishes a road successor from a junction successor
+    # by testing whether the numeric ID exists in the road table. Keep the two
+    # ID domains disjoint even though OpenDRIVE itself does not require it.
+    next_jid = 1000000
     for c in usable_conns:
         root = uf.find(c)
         if root not in junction_ids:
