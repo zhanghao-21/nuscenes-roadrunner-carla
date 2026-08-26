@@ -29,6 +29,8 @@ class SumoRouteContinuator:
 
     Only the data-seeded background IDs supplied by the caller are eligible;
     CARLA-owned actors mirrored into SUMO are never queried or modified.
+    Prepared ``network_terminal`` IDs are explicit source-map road ends and
+    are reported separately instead of being treated as unresolved interiors.
     """
 
     def __init__(self, network, vehicle_domain, eligible_vehicle_ids, seed=0,
@@ -41,11 +43,16 @@ class SumoRouteContinuator:
                  recovery_downstream_blocked_wait_s=1.0,
                  maximum_suffix_recovery_attempts=3,
                  boundary_terminal_tolerance_m=15.0,
-                 continuation_search_depth_edges=64):
+                 continuation_search_depth_edges=64,
+                 accepted_network_terminal_vehicle_ids=None):
         self.network = network
         self.vehicle = vehicle_domain
         self.eligible_vehicle_ids = set(
             str(value) for value in eligible_vehicle_ids)
+        self.accepted_network_terminal_vehicle_ids = ({
+            str(value)
+            for value in (accepted_network_terminal_vehicle_ids or ())
+        } & self.eligible_vehicle_ids)
         self.seed = int(seed)
         self.allow_uturns = bool(allow_uturns)
         self.recovery_wait_s = self._positive_setting(
@@ -86,6 +93,7 @@ class SumoRouteContinuator:
         self.failures = {}
         self.no_outgoing = {}
         self.boundary_road_ends = {}
+        self.accepted_network_terminals = {}
         self.unresolved_interior_route_tails = {}
         self.nonviable_outgoing = {}
         # Retained as an empty compatibility stream. Releasing a terminal
@@ -611,6 +619,7 @@ class SumoRouteContinuator:
                     self.failures.pop(vehicle_id, None)
                     self.no_outgoing.pop(vehicle_id, None)
                     self.boundary_road_ends.pop(vehicle_id, None)
+                    self.accepted_network_terminals.pop(vehicle_id, None)
                     self.unresolved_interior_route_tails.pop(vehicle_id, None)
                     self.nonviable_outgoing.pop(vehicle_id, None)
                     continue
@@ -621,9 +630,17 @@ class SumoRouteContinuator:
                         "rejected_edges": rejected,
                         "reason": "no_boundary_or_cycle_continuation",
                     }
+                if (not outgoing and vehicle_id in
+                        self.accepted_network_terminal_vehicle_ids):
+                    self.no_outgoing[vehicle_id] = tail_edge
+                    self.accepted_network_terminals[vehicle_id] = tail_edge
+                    self.boundary_road_ends.pop(vehicle_id, None)
+                    self.unresolved_interior_route_tails.pop(vehicle_id, None)
+                    continue
                 if not outgoing and self._is_boundary_terminal(tail_edge):
                     self.no_outgoing[vehicle_id] = tail_edge
                     self.boundary_road_ends[vehicle_id] = tail_edge
+                    self.accepted_network_terminals.pop(vehicle_id, None)
                     self.unresolved_interior_route_tails.pop(vehicle_id, None)
                     continue
 
@@ -669,11 +686,13 @@ class SumoRouteContinuator:
                     self.failures.pop(vehicle_id, None)
                     self.no_outgoing.pop(vehicle_id, None)
                     self.boundary_road_ends.pop(vehicle_id, None)
+                    self.accepted_network_terminals.pop(vehicle_id, None)
                     self.unresolved_interior_route_tails.pop(vehicle_id, None)
                     continue
 
                 self.no_outgoing[vehicle_id] = tail_edge
                 self.boundary_road_ends.pop(vehicle_id, None)
+                self.accepted_network_terminals.pop(vehicle_id, None)
                 self.unresolved_interior_route_tails[vehicle_id] = tail_edge
             except Exception as exc:
                 self.failures[vehicle_id] = str(exc)
@@ -1204,6 +1223,8 @@ class SumoRouteContinuator:
                 "preserve_prepared_route_then_guarded_persistent_stop_"
                 "recovery"),
             "eligible_vehicle_count": len(self.eligible_vehicle_ids),
+            "accepted_network_terminal_vehicle_ids": sorted(
+                self.accepted_network_terminal_vehicle_ids),
             "allow_uturns": self.allow_uturns,
             "seed": self.seed,
             "tail_extension_lookahead": "penultimate_normal_edge",
@@ -1247,6 +1268,8 @@ class SumoRouteContinuator:
                 self.no_outgoing.items())),
             "boundary_road_ends": dict(sorted(
                 self.boundary_road_ends.items())),
+            "accepted_network_terminals": dict(sorted(
+                self.accepted_network_terminals.items())),
             "unresolved_interior_route_tails": dict(sorted(
                 self.unresolved_interior_route_tails.items())),
             "interior_sink_candidates_rejected": dict(sorted(

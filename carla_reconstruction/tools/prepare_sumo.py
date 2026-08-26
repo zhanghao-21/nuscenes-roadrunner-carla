@@ -52,6 +52,26 @@ def _convert_network(args, xodr_path, network_path):
     subprocess.run(command, check=True, env=environment, cwd=os.path.dirname(script))
 
 
+def _print_network_terminal_warning(report):
+    rows = sorted(
+        (
+            item for item in report.get("included", [])
+            if (isinstance(item.get("continuation"), dict) and
+                item["continuation"].get("status") == "network_terminal")
+        ),
+        key=lambda item: str(item.get("id", "")))
+    if not rows:
+        return
+    print(
+        "WARNING: %d SUMO mover route(s) reach a source network terminal "
+        "with no outgoing connection. They will drive to that road end and "
+        "then leave SUMO:" % len(rows))
+    for item in rows:
+        print("  - actor %s (SUMO %s), terminal edge %s" % (
+            item.get("id", "unknown"), item.get("sumo_id", "unknown"),
+            item["continuation"].get("terminal_edge", "unknown")))
+
+
 def run(args):
     if (getattr(args, "enable_prediction_risk", False) and
             abs(float(args.step_length) - 0.05) > 1.0e-9):
@@ -263,6 +283,7 @@ def run(args):
     print("SUMO routes: %d; CARLA static: %d; skipped: %d" % (
         len(report["included"]), len(report["carla_static"]),
         len(report["skipped"])))
+    _print_network_terminal_warning(report)
     included_departures = [item["depart"] for item in report["included"]]
     if included_departures:
         print("Moving departures: %.3f-%.3f s; maximum source gap: %s" % (

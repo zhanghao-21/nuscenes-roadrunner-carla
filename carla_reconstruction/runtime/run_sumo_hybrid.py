@@ -61,6 +61,17 @@ def _validate_unbounded_variant_route_report(route_report):
             "for %s; regenerate the safety base and variants" % capped_ids)
 
 
+def _accepted_network_terminal_sumo_ids(route_report):
+    """Return prepared mover IDs whose recorded route reaches a graph sink."""
+    return {
+        str(item["sumo_id"])
+        for item in route_report.get("included", [])
+        if (item.get("sumo_id") and
+            isinstance(item.get("continuation"), dict) and
+            item["continuation"].get("status") == "network_terminal")
+    }
+
+
 def _find_sumo_home(explicit):
     candidates = [explicit, os.environ.get("SUMO_HOME"),
                   r"C:\Program Files (x86)\Eclipse\Sumo",
@@ -855,6 +866,7 @@ def run(args):
         REPO_ROOT, manifest["scene"], "sumo_hybrid")
 
     expected_sumo_ids = set()
+    accepted_network_terminal_sumo_ids = set()
     route_rows = {}
     route_report = {}
     route_report_path = config.get("sumo", {}).get("route_report")
@@ -874,6 +886,8 @@ def run(args):
                 for item in route_report.get("included", [])
                 if item.get("sumo_id")
             }
+            accepted_network_terminal_sumo_ids = (
+                _accepted_network_terminal_sumo_ids(route_report))
         except Exception as exc:
             print("WARNING: moving-vehicle lifecycle report is unavailable:", exc)
 
@@ -1178,7 +1192,9 @@ def run(args):
                                 "boundary_terminal_tolerance_m", 15.0)),
                         continuation_search_depth_edges=int(
                             route_continuation_settings.get(
-                                "terminal_search_depth_edges", 64)))
+                                "terminal_search_depth_edges", 64)),
+                        accepted_network_terminal_vehicle_ids=(
+                            accepted_network_terminal_sumo_ids))
                     _install_sumo_route_continuation(
                         sumo_simulation, runtime_route_continuator,
                         mover_fidelity)

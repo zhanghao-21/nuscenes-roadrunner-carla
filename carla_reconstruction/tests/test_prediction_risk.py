@@ -112,6 +112,38 @@ class PredictionRiskSettingsTests(unittest.TestCase):
                 enable_prediction_risk=True, step_length=0.1))
 
 
+class PrepareSumoReportingTests(unittest.TestCase):
+    def test_network_terminal_warning_lists_count_actor_and_edge(self):
+        report = {
+            "included": [{
+                "id": "actor-a",
+                "sumo_id": "nusc_actor-a",
+                "continuation": {
+                    "status": "network_terminal",
+                    "terminal_edge": "-37",
+                },
+            }, {
+                "id": "actor-b",
+                "sumo_id": "nusc_actor-b",
+                "continuation": {
+                    "status": "boundary_terminal",
+                    "terminal_edge": "-5",
+                },
+            }],
+        }
+
+        with mock.patch("builtins.print") as printer:
+            prepare_sumo._print_network_terminal_warning(report)
+
+        rendered = "\n".join(
+            " ".join(str(value) for value in call.args)
+            for call in printer.call_args_list)
+        self.assertIn("WARNING: 1 SUMO mover route(s)", rendered)
+        self.assertIn("actor actor-a (SUMO nusc_actor-a)", rendered)
+        self.assertIn("terminal edge -37", rendered)
+        self.assertNotIn("actor-b", rendered)
+
+
 class HgtPredictionDecodingTests(unittest.TestCase):
     def test_actor_heading_rotates_canonical_forward_for_four_directions(self):
         directions = np.asarray(

@@ -480,6 +480,18 @@ class SumoRouteContinuationTests(unittest.TestCase):
                 network, ["interior_path_start"], "car",
                 "interior-path", seed=7)
 
+    def test_recorded_network_sink_is_a_valid_road_end(self):
+        network = self._continuation_network()
+
+        tail, report = extend_route_to_terminal(
+            network, ["interior_path_sink"], "car",
+            "recorded-road-end", seed=7)
+
+        self.assertEqual(tail, [])
+        self.assertEqual(report["status"], "network_terminal")
+        self.assertEqual(report["terminal_edge"], "interior_path_sink")
+        self.assertGreater(report["terminal_boundary_distance_m"], 15.0)
+
     def test_extension_prefers_closed_cycle_over_interior_sink(self):
         network = self._continuation_network()
 

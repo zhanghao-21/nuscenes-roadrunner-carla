@@ -222,7 +222,8 @@ class _FakeVehicleDomain:
 
 class SumoRouteContinuatorTests(unittest.TestCase):
     @staticmethod
-    def _continuator(eligible=None, seed=103):
+    def _continuator(eligible=None, seed=103,
+                     accepted_network_terminals=None):
         vehicle = _FakeVehicleDomain()
         if eligible is None:
             eligible = {
@@ -231,8 +232,30 @@ class SumoRouteContinuatorTests(unittest.TestCase):
         continuator = SumoRouteContinuator(
             _FakeNetwork(), vehicle,
             eligible_vehicle_ids=eligible,
-            seed=seed, allow_uturns=False)
+            seed=seed, allow_uturns=False,
+            accepted_network_terminal_vehicle_ids=(
+                accepted_network_terminals))
         return vehicle, continuator
+
+    def test_accepts_prepared_network_terminal_without_marking_unresolved(self):
+        vehicle, continuator = self._continuator(
+            eligible={"eligible-road-end"},
+            accepted_network_terminals={"eligible-road-end"})
+
+        self.assertEqual(continuator.extend_active_routes(4.5), [])
+        self.assertEqual(vehicle.set_route_calls, [])
+        metadata = continuator.metadata()
+        self.assertEqual(
+            metadata["accepted_network_terminal_vehicle_ids"],
+            ["eligible-road-end"])
+        self.assertEqual(metadata["accepted_network_terminals"], {
+            "eligible-road-end": "dead",
+        })
+        self.assertEqual(metadata["road_end_without_outgoing"], {
+            "eligible-road-end": "dead",
+        })
+        self.assertEqual(metadata["boundary_road_ends"], {})
+        self.assertEqual(metadata["unresolved_interior_route_tails"], {})
 
     def test_extends_only_eligible_vehicle_at_final_edge_once(self):
         vehicle, continuator = self._continuator(seed=103)

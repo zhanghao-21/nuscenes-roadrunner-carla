@@ -634,9 +634,11 @@ def extend_route_to_terminal(
         boundary_tolerance=15.0, minimum_cycle_distance_m=0.0):
     """Append a deterministic path to a boundary exit or reusable cycle.
 
-    Interior graph sinks are never valid route terminals. When no reachable
-    boundary exists, the finite route closes and repeats a class-valid cycle
-    long enough to cover the configured simulation horizon.
+    A recorded prefix that already reaches a source-defined graph sink has
+    reached the end of the available road and is therefore a valid network
+    terminal. Generated tails never select interior graph sinks. When no
+    reachable boundary exists, the finite route closes and repeats a
+    class-valid cycle long enough to cover the configured simulation horizon.
     """
     if not recorded_edges:
         raise ValueError("recorded_edges must not be empty")
@@ -705,12 +707,19 @@ def extend_route_to_terminal(
 
     final_edge = recorded_edges[-1]
     if not outgoing(final_edge):
-        if terminal_kind(final_edge) != "boundary_terminal":
+        final_terminal_kind = terminal_kind(final_edge)
+        if (final_terminal_kind != "boundary_terminal" and
+                network.connections.get(final_edge)):
+            # A raw connection exists, but vehicle-class or U-turn filtering
+            # removed every legal successor. This is not a real map road end.
             raise RuntimeError(
                 "actor %s has no valid boundary-or-cycle continuation from "
                 "interior terminal edge %s" % (actor_id, final_edge))
         return [], {
-            "status": terminal_kind(final_edge),
+            "status": (
+                final_terminal_kind
+                if final_terminal_kind == "boundary_terminal"
+                else "network_terminal"),
             "terminal_edge": final_edge,
             "terminal_boundary_distance_m": _reported_boundary_distance(
                 network, final_edge),

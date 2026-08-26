@@ -13,6 +13,7 @@ sys.modules.setdefault("carla", types.ModuleType("carla"))
 from closed_loop.tracks import ActorTrack, TrackPoint  # noqa: E402
 from closed_loop import carla_runtime  # noqa: E402
 from runtime.run_sumo_hybrid import (  # noqa: E402
+    _accepted_network_terminal_sumo_ids,
     _apply_reference_track_control, _detach_carla_static_sumo_proxies,
     _install_carla_to_sumo_spawn_exclusion, _install_sumo_mover_fidelity,
     _install_sumo_behavior_variant, _install_sumo_route_continuation,
@@ -207,6 +208,30 @@ class _ReleaseRequestingContinuator:
 
 
 class SumoBehaviorVariantRuntimeTests(unittest.TestCase):
+    def test_derives_accepted_network_terminals_from_route_report(self):
+        report = {
+            "included": [
+                {
+                    "sumo_id": "nusc_network_end",
+                    "continuation": {"status": "network_terminal"},
+                },
+                {
+                    "sumo_id": "nusc_boundary_end",
+                    "continuation": {"status": "boundary_terminal"},
+                },
+                {
+                    "sumo_id": "nusc_extended",
+                    "continuation": {
+                        "status": "extended_to_boundary_terminal"},
+                },
+                {"continuation": {"status": "network_terminal"}},
+            ],
+        }
+
+        self.assertEqual(
+            _accepted_network_terminal_sumo_ids(report),
+            {"nusc_network_end"})
+
     def test_rejects_stale_recorded_speed_route_report(self):
         valid = {
             "moving_speed": {"policy": "unbounded"},
