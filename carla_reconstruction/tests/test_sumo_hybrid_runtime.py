@@ -281,6 +281,104 @@ class SumoBehaviorVariantRuntimeTests(unittest.TestCase):
         sumo.tick()
         self.assertEqual(len(vehicle.calls), call_count)
 
+    def test_accepts_sumo_lane_parameter_text_rounding(self):
+        actor_id = "nusc_actor"
+        simulation = _FakeSimulationDomain()
+
+        class RoundedParameterVehicle(_BehaviorVehicleDomain):
+            def getParameter(self, _actor_id, key):
+                value = self.parameters[key.split(".", 1)[1]]
+                return "%.2f" % value
+
+        vehicle = RoundedParameterVehicle(simulation)
+        fake_traci = types.ModuleType("traci")
+        fake_traci.simulation = simulation
+        fake_traci.vehicle = vehicle
+        sumo = _FakeSumoSimulation(simulation, actor_id, 0.05)
+        requested = {
+            "tau_s": 0.9,
+            "min_gap_m": 1.5,
+            "accel_mps2": 3.0,
+            "decel_mps2": 5.0,
+            "apparent_decel_mps2": 5.0,
+            "emergency_decel_mps2": 9.0,
+        }
+        lanes = {
+            "lc_strategic": 0.956776,
+            "lc_cooperative": 0.229588,
+            "lc_speed_gain": 0.947156,
+            "lc_keep_right": 0.259168,
+            "lc_assertive": 1.508075,
+        }
+        variant = {
+            "variant_id": "sumo_hybrid_001",
+            "scope": {"sumo_vehicle_ids": [actor_id]},
+            "vehicles": {
+                actor_id: {
+                    "car_following": requested,
+                    "lane_changing": lanes,
+                },
+            },
+        }
+
+        with mock.patch.dict(sys.modules, {"traci": fake_traci}):
+            state = _install_sumo_behavior_variant(sumo, variant)
+        sumo.tick()
+
+        self.assertEqual(state["applied_ids"], {actor_id})
+        self.assertEqual(
+            state["effective_readback"][actor_id]["lane_changing"][
+                "lc_strategic"],
+            0.96)
+        self.assertEqual(state["failures"], {})
+
+    def test_rejects_lane_parameter_difference_beyond_text_rounding(self):
+        actor_id = "nusc_actor"
+        simulation = _FakeSimulationDomain()
+
+        class WrongParameterVehicle(_BehaviorVehicleDomain):
+            def getParameter(self, _actor_id, key):
+                name = key.split(".", 1)[1]
+                if name == "lcStrategic":
+                    return "0.94"
+                return "%.2f" % self.parameters[name]
+
+        vehicle = WrongParameterVehicle(simulation)
+        fake_traci = types.ModuleType("traci")
+        fake_traci.simulation = simulation
+        fake_traci.vehicle = vehicle
+        sumo = _FakeSumoSimulation(simulation, actor_id, 0.05)
+        variant = {
+            "variant_id": "sumo_hybrid_001",
+            "scope": {"sumo_vehicle_ids": [actor_id]},
+            "vehicles": {
+                actor_id: {
+                    "car_following": {
+                        "tau_s": 0.9,
+                        "min_gap_m": 1.5,
+                        "accel_mps2": 3.0,
+                        "decel_mps2": 5.0,
+                        "apparent_decel_mps2": 5.0,
+                        "emergency_decel_mps2": 9.0,
+                    },
+                    "lane_changing": {
+                        "lc_strategic": 0.956776,
+                        "lc_cooperative": 0.23,
+                        "lc_speed_gain": 0.95,
+                        "lc_keep_right": 0.26,
+                        "lc_assertive": 1.51,
+                    },
+                },
+            },
+        }
+
+        with mock.patch.dict(sys.modules, {"traci": fake_traci}):
+            state = _install_sumo_behavior_variant(sumo, variant)
+        sumo.tick()
+        with self.assertRaisesRegex(RuntimeError, "tolerance 0.005001"):
+            sumo.tick()
+        self.assertNotIn(actor_id, state["applied_ids"])
+
     def test_pending_failures_do_not_consume_active_retry_budget(self):
         actor_id = "nusc_actor"
 

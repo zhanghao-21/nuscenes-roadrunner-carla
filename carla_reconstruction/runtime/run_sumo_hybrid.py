@@ -31,6 +31,14 @@ from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
     load_manifest_tracks, point_at, recorded_speed_at)
 
 
+# SUMO 1.19 serializes laneChangeModel parameters with two decimal places in
+# getParameter(), even though setParameter() accepts a higher-precision double.
+# Accept only that textual-display quantization; car-following getters expose
+# enough precision to retain the stricter numeric verification.
+CAR_FOLLOW_READBACK_TOLERANCE = 1.0e-5
+LANE_CHANGE_READBACK_TOLERANCE = 5.001e-3
+
+
 def _load_json(path):
     with open(path, "r", encoding="utf-8") as stream:
         return json.load(stream)
@@ -390,10 +398,16 @@ def _install_sumo_behavior_variant(sumo_simulation, variant):
         for group in ("car_following", "lane_changing"):
             for key, expected in requested[group].items():
                 actual = effective[group][key]
-                if abs(float(expected) - actual) > 1.0e-5:
+                tolerance = (
+                    CAR_FOLLOW_READBACK_TOLERANCE
+                    if group == "car_following" else
+                    LANE_CHANGE_READBACK_TOLERANCE)
+                if (not math.isfinite(actual) or
+                        abs(float(expected) - actual) > tolerance):
                     raise RuntimeError(
-                        "%s read-back mismatch for %s: requested %.9g, got %.9g" %
-                        (key, sumo_id, float(expected), actual))
+                        "%s read-back mismatch for %s: requested %.9g, got "
+                        "%.9g (tolerance %.6g)" %
+                        (key, sumo_id, float(expected), actual, tolerance))
         state["baseline_readback"][sumo_id] = baseline
         state["effective_readback"][sumo_id] = effective
         state["applied_ids"].add(sumo_id)

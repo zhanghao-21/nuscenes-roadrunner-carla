@@ -659,7 +659,7 @@ Run one SUMO variant:
 
 ```bat
 python carla_reconstruction\runtime\run_sumo_hybrid.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants\variant_000.json ^
+  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants\variant_001.json ^
   --sumo-gui --ego-mode reference
 ```
 
@@ -668,6 +668,12 @@ commands above open it automatically when preparation included
 `--enable-prediction-risk`. Each run summary records configured/applied/unapplied
 SUMO IDs, application time and phase, original and effective read-back values,
 failures, and safety modes under `sumo_behavior_variant`.
+
+SUMO 1.19 formats `laneChangeModel` parameter read-back values to two decimal
+places. The runtime accepts only that rounding (an absolute tolerance of
+`0.005001`; for example, requested `0.956776`, reported `0.96`) and still fails
+on a larger mismatch. The exact reported effective values remain in the run
+summary.
 
 ## 6. Generate the CARLA-only Traffic Manager variants
 
