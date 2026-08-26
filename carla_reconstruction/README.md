@@ -232,10 +232,14 @@ python replay_geo\make_gifs.py --scene 0103
 ## 6. Interactive traffic and safety-critical variants
 
 The replay above remains the open-loop reference. A separate closed-loop
-framework now provides a CARLA Traffic Manager baseline, SUMO background
-traffic for moving vehicles, CARLA-fixed recorded parked vehicles,
-CARLA-physics ego/critical actors, deterministic critical-braking variants,
-and safety metrics. SUMO route preparation now matches through internal
+framework now provides two controller-pure safety-variant pipelines. In the
+hybrid pipeline, SUMO controls every classified moving surrounding vehicle,
+CARLA controls the ego, and recorded fixed vehicles remain visible in CARLA. In
+the CARLA-only pipeline, every surrounding vehicle remains in CARLA; Traffic
+Manager controls the movers and fixed/single-observation tracks remain static.
+The generators create a matched baseline plus deterministic behavior variants,
+without selecting a special critical actor, and both runtimes write safety
+metrics and application audits. SUMO route preparation now matches through internal
 junction connectors, rejects opposite-direction/backward matches, preserves
 the recorded edge sequence as a route prefix, and adds a seeded valid
 continuation to a road end (or a duration-sized cyclic tail). It also audits
@@ -262,8 +266,10 @@ valid outgoing connection is never extended.
 Recorded parked vehicles remain at their true CARLA roadside poses, but their
 CARLA-to-SUMO spawn notifications are filtered. SUMO therefore controls only
 the classified moving background vehicles and cannot mistake a lane-mapped
-shadow of an off-road parked car for a stopped leader. Ego and critical CARLA
-actors remain mirrored into SUMO because they are dynamic participants.
+shadow of an off-road parked car for a stopped leader. The CARLA ego remains
+mirrored into SUMO because it is a dynamic participant. Generate hybrid
+variants with `tools\generate_sumo_safety_variants.py` and CARLA-only variants
+with `tools\generate_carla_safety_variants.py`.
 Continue with the Anaconda Prompt instructions in
 [closed_loop/README.md](closed_loop/README.md).
 

@@ -1,3 +1,4 @@
+import copy
 import sys
 import types
 import unittest
@@ -10,11 +11,14 @@ from unittest import mock
 sys.modules.setdefault("carla", types.ModuleType("carla"))
 
 from closed_loop.tracks import ActorTrack, TrackPoint  # noqa: E402
+from closed_loop import carla_runtime  # noqa: E402
 from runtime.run_sumo_hybrid import (  # noqa: E402
     _apply_reference_track_control, _detach_carla_static_sumo_proxies,
     _install_carla_to_sumo_spawn_exclusion, _install_sumo_mover_fidelity,
-    _install_sumo_route_continuation, _prediction_risk_actor_states,
-    _sumo_front_bumper_xy, _terminal_stationary_tail_start)
+    _install_sumo_behavior_variant, _install_sumo_route_continuation,
+    _prediction_risk_actor_states,
+    _sumo_front_bumper_xy, _terminal_stationary_tail_start,
+    _validate_unbounded_variant_route_report)
 
 
 class _FakeVehicleDomain:
@@ -89,6 +93,88 @@ class _OrderingSumoSimulation(_FakeSumoSimulation):
         super().tick()
 
 
+class _BehaviorVehicleDomain:
+    def __init__(self, simulation):
+        self.simulation = simulation
+        self.calls = []
+        self.values = {
+            "tau_s": 1.2,
+            "min_gap_m": 2.5,
+            "accel_mps2": 2.6,
+            "decel_mps2": 4.5,
+            "apparent_decel_mps2": 4.5,
+            "emergency_decel_mps2": 9.0,
+        }
+        self.parameters = {
+            "lcStrategic": 1.0,
+            "lcCooperative": 0.6,
+            "lcSpeedGain": 0.8,
+            "lcKeepRight": 0.5,
+            "lcAssertive": 1.0,
+        }
+
+    def getIDList(self):
+        return list(self.simulation.active_ids)
+
+    def _get(self, key):
+        return self.values[key]
+
+    def _set(self, method, key, actor_id, value):
+        self.calls.append((method, actor_id, value))
+        self.values[key] = float(value)
+
+    def getTau(self, _actor_id):
+        return self._get("tau_s")
+
+    def setTau(self, actor_id, value):
+        self._set("setTau", "tau_s", actor_id, value)
+
+    def getMinGap(self, _actor_id):
+        return self._get("min_gap_m")
+
+    def setMinGap(self, actor_id, value):
+        self._set("setMinGap", "min_gap_m", actor_id, value)
+
+    def getAccel(self, _actor_id):
+        return self._get("accel_mps2")
+
+    def setAccel(self, actor_id, value):
+        self._set("setAccel", "accel_mps2", actor_id, value)
+
+    def getDecel(self, _actor_id):
+        return self._get("decel_mps2")
+
+    def setDecel(self, actor_id, value):
+        self._set("setDecel", "decel_mps2", actor_id, value)
+
+    def getApparentDecel(self, _actor_id):
+        return self._get("apparent_decel_mps2")
+
+    def setApparentDecel(self, actor_id, value):
+        self._set(
+            "setApparentDecel", "apparent_decel_mps2", actor_id, value)
+
+    def getEmergencyDecel(self, _actor_id):
+        return self._get("emergency_decel_mps2")
+
+    def setEmergencyDecel(self, actor_id, value):
+        self._set(
+            "setEmergencyDecel", "emergency_decel_mps2", actor_id, value)
+
+    def getParameter(self, _actor_id, key):
+        return str(self.parameters[key.split(".", 1)[1]])
+
+    def setParameter(self, actor_id, key, value):
+        self.calls.append(("setParameter", actor_id, key, value))
+        self.parameters[key.split(".", 1)[1]] = float(value)
+
+    def getSpeedMode(self, _actor_id):
+        return 31
+
+    def getLaneChangeMode(self, _actor_id):
+        return 1621
+
+
 class _ReleaseRequestingContinuator:
     def __init__(self, actor_id, events):
         self.actor_id = actor_id
@@ -118,6 +204,203 @@ class _ReleaseRequestingContinuator:
     def extend_active_routes(self, simulation_time):
         self.events.append(("extend", simulation_time))
         return []
+
+
+class SumoBehaviorVariantRuntimeTests(unittest.TestCase):
+    def test_rejects_stale_recorded_speed_route_report(self):
+        valid = {
+            "moving_speed": {"policy": "unbounded"},
+            "included": [{
+                "id": "track", "sumo_id": "nusc_track",
+                "sumo_max_speed_mps": None,
+            }],
+        }
+        _validate_unbounded_variant_route_report(valid)
+
+        stale_policy = copy.deepcopy(valid)
+        stale_policy["moving_speed"]["policy"] = "recorded_profile"
+        with self.assertRaisesRegex(ValueError, "not unbounded"):
+            _validate_unbounded_variant_route_report(stale_policy)
+
+        stale_cap = copy.deepcopy(valid)
+        stale_cap["included"][0]["sumo_max_speed_mps"] = 12.0
+        with self.assertRaisesRegex(ValueError, "stale maxSpeed"):
+            _validate_unbounded_variant_route_report(stale_cap)
+
+    def test_applies_resolved_profile_once_when_vehicle_becomes_active(self):
+        actor_id = "nusc_actor"
+        simulation = _FakeSimulationDomain()
+        vehicle = _BehaviorVehicleDomain(simulation)
+        fake_traci = types.ModuleType("traci")
+        fake_traci.simulation = simulation
+        fake_traci.vehicle = vehicle
+        sumo = _FakeSumoSimulation(simulation, actor_id, 0.05)
+        requested = {
+            "tau_s": 0.9,
+            "min_gap_m": 1.5,
+            "accel_mps2": 3.0,
+            "decel_mps2": 5.0,
+            "apparent_decel_mps2": 5.0,
+            "emergency_decel_mps2": 9.0,
+        }
+        lanes = {
+            "lc_strategic": 1.5,
+            "lc_cooperative": 0.4,
+            "lc_speed_gain": 1.4,
+            "lc_keep_right": 0.2,
+            "lc_assertive": 1.3,
+        }
+        variant = {
+            "variant_id": "sumo_hybrid_000",
+            "scope": {"sumo_vehicle_ids": [actor_id]},
+            "vehicles": {
+                actor_id: {
+                    "car_following": requested,
+                    "lane_changing": lanes,
+                },
+            },
+        }
+
+        with mock.patch.dict(sys.modules, {"traci": fake_traci}):
+            state = _install_sumo_behavior_variant(sumo, variant)
+        sumo.tick()
+
+        self.assertEqual(state["applied_ids"], {actor_id})
+        self.assertEqual(state["application_phase"], {actor_id: "post_tick"})
+        self.assertEqual(state["applied_at_s"], {actor_id: 0.05})
+        self.assertEqual(
+            state["effective_readback"][actor_id]["car_following"],
+            requested)
+        self.assertEqual(
+            state["effective_readback"][actor_id]["lane_changing"], lanes)
+        self.assertEqual(state["safety_modes_at_application"][actor_id], {
+            "speed_mode": 31,
+            "lane_change_mode": 1621,
+        })
+        call_count = len(vehicle.calls)
+        sumo.tick()
+        self.assertEqual(len(vehicle.calls), call_count)
+
+    def test_pending_failures_do_not_consume_active_retry_budget(self):
+        actor_id = "nusc_actor"
+
+        class PendingSimulation(_FakeSimulationDomain):
+            def __init__(self):
+                super().__init__()
+                self.loaded_ids = {actor_id}
+
+            def getLoadedIDList(self):
+                return list(self.loaded_ids)
+
+        class DelayedSumo:
+            def __init__(self, simulation):
+                self.simulation = simulation
+                self.ticks = 0
+
+            def tick(self):
+                self.ticks += 1
+                self.simulation.time += 0.05
+                if self.ticks >= 3:
+                    self.simulation.loaded_ids.clear()
+                    self.simulation.active_ids.add(actor_id)
+
+        class FailingVehicle(_BehaviorVehicleDomain):
+            def getTau(self, _actor_id):
+                raise RuntimeError("not ready")
+
+        simulation = PendingSimulation()
+        vehicle = FailingVehicle(simulation)
+        fake_traci = types.ModuleType("traci")
+        fake_traci.simulation = simulation
+        fake_traci.vehicle = vehicle
+        sumo = DelayedSumo(simulation)
+        requested = {
+            "tau_s": 0.9,
+            "min_gap_m": 1.5,
+            "accel_mps2": 3.0,
+            "decel_mps2": 5.0,
+            "apparent_decel_mps2": 5.0,
+            "emergency_decel_mps2": 9.0,
+        }
+        lanes = {
+            "lc_strategic": 1.5,
+            "lc_cooperative": 0.4,
+            "lc_speed_gain": 1.4,
+            "lc_keep_right": 0.2,
+            "lc_assertive": 1.3,
+        }
+        variant = {
+            "variant_id": "sumo_hybrid_000",
+            "scope": {"sumo_vehicle_ids": [actor_id]},
+            "vehicles": {
+                actor_id: {
+                    "car_following": requested,
+                    "lane_changing": lanes,
+                },
+            },
+        }
+
+        with mock.patch.dict(sys.modules, {"traci": fake_traci}):
+            state = _install_sumo_behavior_variant(sumo, variant)
+        sumo.tick()
+        sumo.tick()
+        sumo.tick()
+
+        self.assertGreater(state["attempts"][actor_id], 3)
+        self.assertEqual(state["active_attempts"][actor_id], 1)
+        with self.assertRaisesRegex(RuntimeError, "3 active attempts"):
+            sumo.tick()
+
+
+class CarlaTrafficManagerBehaviorTests(unittest.TestCase):
+    class FakeActor:
+        def __init__(self):
+            self.autopilot_calls = []
+
+        def set_autopilot(self, enabled, port):
+            self.autopilot_calls.append((enabled, port))
+
+    def test_variant_overrides_are_applied_after_safe_tm_defaults(self):
+        actor = self.FakeActor()
+        traffic_manager = mock.Mock()
+        track = ActorTrack("moving", "vehicle.car", [
+            TrackPoint(0, 0.0, 0.0, 0.0, 0.0),
+            TrackPoint(1, 2.0, 10.0, 0.0, 0.0),
+        ])
+        behavior = {
+            "desired_speed_scale": 1.2,
+            "leading_distance_m": 1.5,
+            "auto_lane_change": True,
+            "random_left_lane_change_percentage": 10.0,
+            "random_right_lane_change_percentage": 20.0,
+            "keep_right_rule_percentage": 30.0,
+        }
+
+        with mock.patch.object(
+                carla_runtime, "carla_path",
+                return_value=[(0.0, 0.0), (10.0, 0.0)]), \
+                mock.patch.object(
+                    carla_runtime.carla, "Location",
+                    side_effect=lambda **values: types.SimpleNamespace(**values),
+                    create=True):
+            applied = carla_runtime.configure_tm_actor(
+                traffic_manager, actor, track, 8000,
+                behavior_variant=behavior)
+
+        self.assertEqual(actor.autopilot_calls, [(True, 8000)])
+        traffic_manager.auto_lane_change.assert_called_once_with(actor, True)
+        traffic_manager.distance_to_leading_vehicle.assert_called_once_with(
+            actor, 1.5)
+        desired_call = traffic_manager.set_desired_speed.call_args[0]
+        self.assertIs(desired_call[0], actor)
+        self.assertAlmostEqual(desired_call[1], 21.6)
+        traffic_manager.random_left_lanechange_percentage.assert_called_once_with(
+            actor, 10.0)
+        traffic_manager.random_right_lanechange_percentage.assert_called_once_with(
+            actor, 20.0)
+        traffic_manager.keep_right_rule_percentage.assert_called_once_with(
+            actor, 30.0)
+        self.assertAlmostEqual(applied["desired_speed_kmh"], 21.6)
 
 
 class SumoMoverFidelityTests(unittest.TestCase):

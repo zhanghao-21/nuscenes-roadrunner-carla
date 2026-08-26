@@ -80,20 +80,49 @@ def carla_path(track, minimum_spacing=2.0):
 
 def configure_tm_actor(traffic_manager, actor, track, tm_port,
                        minimum_spacing=2.0, leading_distance=2.5,
-                       auto_lane_change=False, minimum_speed_kmh=3.0):
+                       auto_lane_change=False, minimum_speed_kmh=3.0,
+                       behavior_variant=None):
+    behavior = dict(behavior_variant or {})
+    desired_speed_scale = float(behavior.get("desired_speed_scale", 1.0))
+    effective_leading_distance = float(behavior.get(
+        "leading_distance_m", leading_distance))
+    effective_auto_lane_change = bool(behavior.get(
+        "auto_lane_change", auto_lane_change))
     actor.set_autopilot(True, tm_port)
-    traffic_manager.auto_lane_change(actor, bool(auto_lane_change))
-    traffic_manager.distance_to_leading_vehicle(actor, float(leading_distance))
+    traffic_manager.auto_lane_change(actor, effective_auto_lane_change)
+    traffic_manager.distance_to_leading_vehicle(
+        actor, effective_leading_distance)
     traffic_manager.ignore_vehicles_percentage(actor, 0.0)
     traffic_manager.ignore_walkers_percentage(actor, 0.0)
     traffic_manager.ignore_lights_percentage(actor, 0.0)
     traffic_manager.ignore_signs_percentage(actor, 0.0)
-    desired_speed = max(float(minimum_speed_kmh), track.mean_speed * 3.6)
+    desired_speed = max(
+        float(minimum_speed_kmh),
+        track.mean_speed * 3.6 * desired_speed_scale)
     traffic_manager.set_desired_speed(actor, desired_speed)
+    if behavior_variant is not None:
+        traffic_manager.random_left_lanechange_percentage(
+            actor, float(behavior["random_left_lane_change_percentage"]))
+        traffic_manager.random_right_lanechange_percentage(
+            actor, float(behavior["random_right_lane_change_percentage"]))
+        traffic_manager.keep_right_rule_percentage(
+            actor, float(behavior["keep_right_rule_percentage"]))
     locations = [carla.Location(x=x, y=y, z=0.0)
                  for x, y in carla_path(track, minimum_spacing)]
     if len(locations) >= 2:
         traffic_manager.set_path(actor, locations[1:])
+    return {
+        "desired_speed_kmh": desired_speed,
+        "desired_speed_scale": desired_speed_scale,
+        "leading_distance_m": effective_leading_distance,
+        "auto_lane_change": effective_auto_lane_change,
+        "random_left_lane_change_percentage": float(behavior.get(
+            "random_left_lane_change_percentage", 0.0)),
+        "random_right_lane_change_percentage": float(behavior.get(
+            "random_right_lane_change_percentage", 0.0)),
+        "keep_right_rule_percentage": float(behavior.get(
+            "keep_right_rule_percentage", 0.0)),
+    }
 
 
 def actor_state(actor):

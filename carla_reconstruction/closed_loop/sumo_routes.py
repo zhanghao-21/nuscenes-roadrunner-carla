@@ -956,6 +956,7 @@ _VTYPE_COMMON = {
     "lcCooperative": "0.6",
     "lcSpeedGain": "0.8",
     "lcKeepRight": "0.5",
+    "lcAssertive": "1.0",
 }
 
 _VTYPE_DEFINITIONS = {
@@ -982,6 +983,29 @@ def _vtype_for(track):
     kind = actor_kind(track.category)
     return "nusc_%s" % (kind if kind in {"truck", "bus", "motorcycle", "bicycle"}
                          else "car")
+
+
+def _sumo_behavior_baseline(track):
+    """Return explicit per-class behavior values written to the SUMO vType."""
+    base_type = _vtype_for(track)
+    values = {**_VTYPE_COMMON, **_VTYPE_DEFINITIONS[base_type]}
+    return {
+        "car_following": {
+            "tau_s": float(values["tau"]),
+            "min_gap_m": float(values["minGap"]),
+            "accel_mps2": float(values["accel"]),
+            "decel_mps2": float(values["decel"]),
+            "apparent_decel_mps2": float(values["decel"]),
+            "emergency_decel_mps2": float(values["emergencyDecel"]),
+        },
+        "lane_changing": {
+            "lc_strategic": float(values["lcStrategic"]),
+            "lc_cooperative": float(values["lcCooperative"]),
+            "lc_speed_gain": float(values["lcSpeedGain"]),
+            "lc_keep_right": float(values["lcKeepRight"]),
+            "lc_assertive": float(values["lcAssertive"]),
+        },
+    }
 
 
 def _moving_speed_ceiling(track, policy, minimum_speed):
@@ -1186,17 +1210,14 @@ def write_sumo_scenario(network_path, tracks, output_dir, scene_name,
             continue
         motion = classify_vehicle_motion(
             track, minimum_track_distance, minimum_two_point_speed)
-        if motion is None:
-            report["skipped"].append({
-                "id": actor_id,
-                "reason": "fewer than 2 recorded points",
-            })
-            continue
-        if motion == "static":
+        if motion in (None, "static"):
             report["carla_static"].append({
                 "id": actor_id,
                 "category": track.category,
                 "authority": "carla_static",
+                "motion_classification": (
+                    "single_observation_static" if motion is None else
+                    "recorded_static"),
                 "depart": track.start_time,
                 "recorded_start_time": track.start_time,
                 "samples": len(track.points),
@@ -1296,6 +1317,8 @@ def write_sumo_scenario(network_path, tracks, output_dir, scene_name,
             "net_displacement_m": track.net_displacement,
             "sumo_max_speed_mps": maximum_speed,
             "sumo_vehicle_length_m": vehicle_length,
+            "sumo_type_id": type_id,
+            "sumo_behavior_baseline": _sumo_behavior_baseline(track),
             **plan,
         })
 

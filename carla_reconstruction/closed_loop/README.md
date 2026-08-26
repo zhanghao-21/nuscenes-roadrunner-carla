@@ -5,7 +5,7 @@ open-loop `replay_persistent.py` baseline:
 
 - `run_tm_closed_loop.py`: CARLA-native Traffic Manager baseline.
 - `run_sumo_hybrid.py`: SUMO-controlled moving background traffic with
-  CARLA-authority ego, selected critical actors, and recorded parked vehicles.
+  a CARLA-authority ego and recorded parked vehicles fixed in CARLA.
 
 The same nuScenes manifest supplies initial poses, reference routes, actor
 appearance times, categories, and recorded speeds. The hybrid deliberately
@@ -32,8 +32,9 @@ The hybrid configuration records who controls every class of actor:
 | `carla_static` | Recorded parked vehicle fixed in CARLA with physics disabled |
 | `sumo` | SUMO car-following/lane-changing background traffic |
 
-`carla_reference` also accepts timed braking events. This is the initial hook
-for generated safety-critical actors.
+The variant workflows below do not mix controller authorities: every moving
+surrounding actor in the hybrid experiment is SUMO-controlled, while every
+surrounding actor in the CARLA-only experiment remains CARLA-controlled.
 
 ## 1. Install the decorated-map Traffic Manager data
 
@@ -87,7 +88,10 @@ Use `--ego-mode external` when another CARLA client will find the actor whose
 `role_name` is `hero` and apply its own controls. Only this mode represents the
 closed loop of the eventual autonomous-driving system under test.
 
-Stationary recorded vehicles remain static. By default, a multi-sample vehicle
+Stationary recorded vehicles remain static. A single-observation vehicle is
+also retained as a fixed CARLA actor: there is not enough evidence to invent a
+moving route for it, but omitting it would change the recorded scene. By
+default, a multi-sample vehicle
 is moving when the maximum separation between any two observations is at least
 2 m; this spatial extent avoids mistaking back-and-forth annotation jitter for
 travel. A two-point track observed over at most 0.5 s is also moving when its
@@ -119,16 +123,17 @@ carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo
 They include `network.net.xml`, `routes.rou.xml`, `scene.sumocfg`,
 `route_report.json`, and `hybrid_config.json`. Preparation uses the same motion
 classifier as the CARLA Traffic Manager baseline: moving tracks become SUMO
-routes, while stationary multi-sample vehicle tracks are written to
+routes, while stationary and single-observation vehicle tracks are written to
 `static_actors` and remain fixed in CARLA. Moving observations farther than 8 m
 from a compatible connected SUMO lane are skipped instead of being silently
 assigned to an incorrect road.
 
 Inspect all three groups in `route_report.json`: `included` contains moving
-SUMO vehicles, `carla_static` contains recorded parked vehicles, and `skipped`
-contains non-vehicles, explicitly CARLA-controlled critical actors, or
-insufficient records. One-point vehicle tracks are omitted in both baselines
-because motion cannot be classified consistently from one observation.
+SUMO vehicles, `carla_static` contains recorded fixed vehicles, and `skipped`
+contains non-vehicles or unusable moving routes. A single-observation vehicle
+appears in `carla_static` with `motion_classification` set to
+`single_observation_static`; it is visible but is never a behavior-variant
+target.
 
 By default, all `carla_static` actors are spawned at their recorded poses
 before the main scenario clock starts. The runner then performs the configured
@@ -137,8 +142,8 @@ SUMO traffic is released. Their one-tick bridge spawn notifications are
 deliberately filtered: the recorded vehicles remain physics-disabled and
 visible at their true CARLA roadside poses, but SUMO does not create lane-mapped
 shadows for them. This prevents an off-lane parked actor from becoming a false
-SUMO car-following leader. Dynamic CARLA-owned actors such as the ego and
-critical vehicle are still mirrored so SUMO traffic can react to them. Use
+SUMO car-following leader. The dynamic CARLA-owned ego is still mirrored so
+SUMO traffic can react to it. Use
 `--static-spawn-mode recorded` only when the original annotation appearance
 times are specifically required instead of a complete parked-vehicle backdrop
 at startup.
@@ -284,15 +289,14 @@ and continuation status.
 `prepare_sumo.py` rewrites `hybrid_config.json` every time it runs. The
 `--keep-existing-net` option preserves only `network.net.xml`; it does not merge
 or preserve optional settings from the previous hybrid configuration. Therefore,
-repeat options such as `--enable-prediction-risk`, `--critical-actor`, and any
-intentional timing override whenever regenerating the corresponding experiment.
+repeat options such as `--enable-prediction-risk` and any intentional timing
+override whenever regenerating the corresponding experiment. Do not pass
+`--critical-actor` for the all-SUMO safety-variant pipeline.
 
-For the current scene-0103 conversion at the default boundaries, validation
-finds 11 moving and 51 stationary recorded vehicles. Five one-point vehicle
-records cannot be classified and 46 pedestrian tracks are outside SUMO route
-generation. If the example critical actor in Section 5 is selected, the split
-is 10 SUMO moving vehicles, 51 CARLA-static vehicles, and one CARLA-physics
-critical vehicle.
+For the current scene-0103 conversion at the default boundaries, preparation
+finds 11 moving SUMO vehicles and 56 fixed CARLA vehicles (51 multi-sample
+stationary tracks plus 5 single-observation tracks). The 46 pedestrian tracks
+are outside SUMO route generation.
 
 Optional standalone validation:
 
@@ -326,8 +330,7 @@ main scenario loop, bridge-only warmup ticks register those actors but filter
 their CARLA-to-SUMO spawn notifications. This keeps the parked backdrop in
 CARLA without creating false in-lane SUMO obstacles; moving departures include
 a small startup delay so they begin after that warmup. The bridge still mirrors
-the CARLA-owned ego and critical actors so moving traffic can react to them;
-SUMO vehicle poses are synchronized back into
+the CARLA-owned ego so moving traffic can react to it; SUMO vehicle poses are synchronized back into
 CARLA for rendering and sensors.
 
 Every `carla_reference` track is finite. At its recorded end time, a lagging
@@ -343,10 +346,9 @@ actual/recorded hold positions, endpoint error, and speed are stored under
 `reference_track_end_control` in `summary.json`.
 
 The terminal defaults are a 0.75 m endpoint tolerance and 3.0 m/s² planned
-deceleration. A critical-actor entry can override them with
-`endpoint_stop_tolerance_m` and `endpoint_deceleration_mps2`. These values tune
-the physical approach only; the actor is never teleported or transferred to
-SUMO.
+deceleration. These values concern a CARLA-reference ego or a legacy manually
+configured CARLA-reference actor; generated all-SUMO variants do not create
+such surrounding actors.
 
 The console logs each expected mover's `inserted`, `mirrored`, and `completed`
 events. The run `summary.json` stores the same information under
@@ -360,10 +362,10 @@ with the SUMO `sumo_time_at_stop_s` to distinguish a not-yet-due actor from a
 blocked or failed insertion.
 `inserted_but_never_mirrored` indicates that an inserted SUMO actor never
 obtained a CARLA mirror, for example because blueprint selection or CARLA spawn
-failed. `completed` identifies a SUMO route exit. For the current full
-scene-0103 validation, all 10 SUMO movers were inserted and mirrored; the two
-that completed had reached the true boundary edge `-37`, while the other eight
-were still active at the scenario stop.
+failed. `completed` identifies a SUMO route exit. Generated experiment configs
+audit all 11 current scene-0103 moving IDs, and the summary exposes any ID that
+was not inserted, mirrored, behavior-configured, or still active at the
+scenario stop.
 
 The `sumo_static_proxy_exclusion` summary section reports how many recorded
 static CARLA actor IDs were filtered before SUMO proxy creation, any legacy
@@ -544,8 +546,8 @@ If the dashboard does not open:
 1. First check whether `prepare_sumo.py` was rerun without
    `--enable-prediction-risk`. That removes the `prediction_risk` section from
    the regenerated `hybrid_config.json`, so the runner correctly starts without
-   the dashboard. `generate_safety_variants.py` copies the base configuration;
-   it cannot restore a missing prediction-risk section.
+   the dashboard. `generate_sumo_safety_variants.py` copies the base
+   configuration; it cannot restore a missing prediction-risk section.
 2. To enable the dashboard immediately without regenerating files, force the
    runtime override:
 
@@ -557,8 +559,8 @@ If the dashboard does not open:
    ```
 
 3. To restore automatic dashboard startup in the saved configuration, rerun
-   `prepare_sumo.py` with `--enable-prediction-risk`. If the experiment also
-   uses a critical actor, repeat both options as shown in Section 5 below.
+   `prepare_sumo.py` with `--enable-prediction-risk`, then regenerate the SUMO
+   variants so every copied config inherits that section.
 4. Confirm that `python` is the same Python 3.7 environment that imports the
    CARLA API, then run the dependency import check above.
 5. Retry with `--prediction-device cpu` when Torch reports a CUDA or driver
@@ -578,68 +580,161 @@ and dashboard-process messaging without CARLA or SUMO. A successful combined
 CARLA-SUMO-dashboard smoke test is still required on the simulator machine; it
 is not claimed by the offline test suite.
 
-## 5. Designate a CARLA-physics critical actor
+## 5. Generate the all-SUMO hybrid variants
 
-Actor IDs are listed in `route_report.json`. Rebuild the SUMO files while
-excluding the selected actor from SUMO. Use an `included[].id` value, not the
-`sumo_id` value prefixed with `nusc_`. `ACTOR_ID_FROM_ROUTE_REPORT` is descriptive
-placeholder text and must never be passed literally.
-
-The following is a complete dashboard-enabled example for scene-0103. The actor
-shown is a real ID in the current route report; replace its value if a different
-surrounding vehicle is the intended critical actor:
+This pipeline has no selected critical vehicle. The ego remains in CARLA, all
+11 classified moving surrounding vehicles in scene-0103 are controlled by
+SUMO, and all 56 fixed surrounding vehicles remain visible in CARLA. First
+prepare a clean hybrid baseline **without** `--critical-actor`:
 
 ```bat
 set "SUMO_HOME=C:\Traffic software\SUMO"
-set "CRITICAL_ACTOR=c283b224a9984736bff67a2f347866fa"
 
 python carla_reconstruction\tools\prepare_sumo.py ^
   --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
-  --keep-existing-net ^
-  --critical-actor %CRITICAL_ACTOR% ^
+  --output carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base ^
+  --net-file carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\network.net.xml ^
+  --moving-speed-policy unbounded ^
   --enable-prediction-risk
 ```
 
-In Windows Command Prompt, each `set` command must be on its own line (or joined
-to the next command with `&&`). Use `^`, not `\`, for command continuation.
+This writes a separate safety-experiment base and copies the already prepared
+network into it, leaving the ordinary `sumo\hybrid_config.json` and its
+recorded-speed behavior unchanged. `--moving-speed-policy unbounded` must be
+used during preparation, rather than changing that word in JSON afterward:
+the recorded policies write per-track `maxSpeed` caps into `routes.rou.xml`,
+which would otherwise continue constraining every generated experiment.
 
-The generated `hybrid_config.json` now gives that actor
-`carla_reference` authority. It follows the recorded route with CARLA physics,
-reacts to a leading vehicle using a configurable time headway, and can execute
-scenario events. Explicit ego/critical authority takes precedence if an actor
-would otherwise be classified as static.
+Do not delete `critical_actors` only from an old JSON. A previously selected
+actor was also omitted from `routes.rou.xml`; the preparation command must be
+rerun so that actor becomes a SUMO route again. The generator deliberately
+rejects a nonempty `critical_actors` list or a route report that still contains
+`reason: CARLA authority`.
 
-## 6. Generate safety-critical braking variants
-
-Run this in the same Command Prompt as Section 5, or set `CRITICAL_ACTOR` to
-the same real route-report ID again before invoking the generator:
+Generate a matched baseline and 20 deterministic Latin-hypercube variants:
 
 ```bat
-set "CRITICAL_ACTOR=c283b224a9984736bff67a2f347866fa"
-
-python carla_reconstruction\tools\generate_safety_variants.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\hybrid_config.json ^
-  --critical-actor %CRITICAL_ACTOR% ^
+python carla_reconstruction\tools\generate_sumo_safety_variants.py ^
+  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\hybrid_config.json ^
   --count 20
 ```
 
-The generator uses deterministic Latin-hypercube samples of brake start time,
-duration, intensity, desired-speed scale, and time headway. Run a variant by
-passing its JSON file to `run_sumo_hybrid.py --config`. Variants inherit the
-base `hybrid_config.json`, including its static-actor partition and
-startup/departure schedule, as well as its prediction-risk/dashboard setting,
-so prepare the base configuration with all desired options before generating
-them. Regenerate existing variants after rerunning `prepare_sumo.py`; otherwise
-those older JSON files retain the old actor partition and schedule.
+The output folder is:
 
-Braking events are generated only inside the selected critical actor's finite
-recorded control window. If a requested start range extends beyond that window,
-the generator reports and records an effective bounded range; it also shortens
-an individual duration when necessary so the complete event ends no later than
-the track end. `index.json` records the track window, requested/effective timing
-ranges, each brake end time, and the number of adjusted events. This prevents a
-variant from scheduling its intervention after the recorded control window has
-ended and the terminal endpoint approach described in Section 4 has begun.
+```text
+carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants
+```
+
+It contains `baseline.json`, `variant_000.json` through `variant_019.json`, and
+`index.json`. The same sampled profile is applied to every moving SUMO actor;
+there is no actor-selection argument. Car-following samples are bounded
+multipliers of each vehicle type's own `tau`, `minGap`, acceleration, and
+comfortable/apparent deceleration, so a bicycle does not silently acquire a
+car's physical defaults. Lane-changing samples cover `lcStrategic`,
+`lcCooperative`, `lcSpeedGain`, `lcKeepRight`, and `lcAssertive`. Every generated
+JSON stores the resolved absolute values for every SUMO ID, its source track ID,
+and its SUMO type ID; this makes the experiment reproducible even if a later
+SUMO installation changes a default.
+
+Both the matched baseline and the sampled variants use a genuinely autonomous
+`background.moving_speed.policy=unbounded`: their prepared vTypes contain no
+per-track recorded `maxSpeed` caps. They still receive the recorded initial
+pose and a short initial-speed seed, and they retain the recorded route prefix
+and prepared continuation. Thereafter SUMO owns desired speed. This is
+necessary because the ordinary `recorded_profile` policy calls `setSpeed` every
+tick and would partially mask the following parameters being studied. The
+pipeline rejects a recorded-speed base instead of silently relabeling it. It
+never disables SUMO safe-speed, collision, traffic-light, right-of-way, or
+lane-change safety modes.
+
+Run the matched SUMO baseline:
+
+```bat
+python carla_reconstruction\runtime\run_sumo_hybrid.py ^
+  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants\baseline.json ^
+  --sumo-gui --ego-mode reference
+```
+
+Run one SUMO variant:
+
+```bat
+python carla_reconstruction\runtime\run_sumo_hybrid.py ^
+  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants\variant_000.json ^
+  --sumo-gui --ego-mode reference
+```
+
+The dashboard setting is copied from the prepared base configuration, so the
+commands above open it automatically when preparation included
+`--enable-prediction-risk`. Each run summary records configured/applied/unapplied
+SUMO IDs, application time and phase, original and effective read-back values,
+failures, and safety modes under `sumo_behavior_variant`.
+
+## 6. Generate the CARLA-only Traffic Manager variants
+
+This second pipeline does not use SUMO or `prepare_sumo.py`. Every recorded
+surrounding vehicle is spawned in CARLA: the same 11 moving tracks use Traffic
+Manager and the other 56 vehicle tracks remain fixed. The ego keeps the mode
+selected at runtime and is not behavior-varied.
+
+Generate its matched baseline and 20 variants:
+
+```bat
+python carla_reconstruction\tools\generate_carla_safety_variants.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --count 20
+```
+
+The output folder is:
+
+```text
+carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants
+```
+
+CARLA 0.9.15 exposes no per-vehicle IDM-style `tau`, acceleration, or
+deceleration setter. This pipeline therefore varies only controls that Traffic
+Manager actually supports: desired-speed scale, leading distance, automatic
+lane changing, random left/right lane-change percentages, and keep-right
+percentage. Ignore-vehicle, ignore-walker, ignore-light, and ignore-sign values
+remain zero, so the generator does not create risk merely by disabling Traffic
+Manager safety checks. Each experiment applies one sampled profile consistently
+to all 11 moving surrounding actors. `index.json` records the fixed Traffic
+Manager seed, eligible track IDs, population split, baseline, and every sampled
+profile.
+
+Run the matched CARLA baseline:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\baseline.json ^
+  --ego-mode replay --replay-pedestrians
+```
+
+Run one CARLA variant:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\variant_000.json ^
+  --ego-mode replay --replay-pedestrians
+```
+
+`--variant-config` supplies the manifest, motion-classification thresholds, and
+Traffic Manager seed. An explicit `--manifest` may also be passed, but it must
+resolve to the same file. Every baseline/variant JSON records both the complete
+retained vehicle-ID set and the moving behavior-target set. The runner rejects
+a different `--max-vehicles`, changed manifest population, or motion threshold
+if it would silently change either set. Traffic Manager seeds are constrained
+to CARLA's unsigned 64-bit range. Each summary records
+eligible/applied/unapplied track IDs, CARLA actor IDs, resolved behavior, and
+application times under `carla_behavior_variant`.
+
+Rerunning either generator with a smaller `--count` removes only obsolete files
+whose names match its own `variant_NUMBER.json` pattern; unrelated files in the
+output directory are left untouched.
+
+The old selected-critical-actor generator is retired. For scripted callers,
+`generate_safety_variants.py` remains only as a dispatcher with the explicit
+`sumo-hybrid` and `carla-only` pipeline names; the two controller-specific tools
+above are preferred.
 
 ## Run outputs and current boundary
 
@@ -657,12 +752,14 @@ used to replace the legacy `metrics.csv` closing-TTC fields.
 
 The moving SUMO traffic is **data-seeded and closed-loop, not trajectory
 replay**. The recorded observations determine the initial pose, departure
-batch, route prefix, and desired speed profile. SUMO still decides the safe
-realized speed, following response, intersection behavior, and lane changes;
-after recorded observations end it also owns the desired speed. Continuation
+batch, route prefix, and, for the ordinary hybrid baseline, desired speed
+profile. SUMO still decides the safe realized speed, following response,
+intersection behavior, and lane changes. The generated SUMO experiment
+baseline and variants instead release desired-speed control after the initial
+seed so the sampled following parameters are effective. Continuation
 edges beyond the data are seeded valid choices rather than ground truth. The
 route types use IDM car following and SL2015 lane changing because CARLA's
 bridge enables SUMO sublane simulation. Consequently, a mover can deviate from
-its recorded position when it reacts to the ego, a critical actor, a leader, or
+its recorded position when it reacts to the ego, a leader, or
 right-of-way constraints. Driver-model calibration against nuScenes headway,
 acceleration, and lane-change observations remains a research stage.

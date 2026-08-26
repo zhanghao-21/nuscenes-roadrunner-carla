@@ -329,12 +329,20 @@ class SumoRouteTests(unittest.TestCase):
         self.assertEqual(
             [item["id"] for item in report["included"]], ["moving"])
         self.assertEqual(
-            [item["id"] for item in report["carla_static"]], ["parked"])
+            [item["id"] for item in report["carla_static"]],
+            ["parked", "one-point"])
         self.assertEqual(report["carla_static"][0]["authority"], "carla_static")
+        self.assertEqual(
+            report["carla_static"][1]["motion_classification"],
+            "single_observation_static")
+        self.assertIn("sumo_behavior_baseline", report["included"][0])
+        self.assertEqual(
+            report["included"][0]["sumo_behavior_baseline"]
+            ["lane_changing"]["lc_assertive"], 1.0)
         self.assertEqual(report["minimum_track_distance_m"], 2.0)
         skipped = {item["id"]: item["reason"] for item in report["skipped"]}
         self.assertEqual(skipped["critical"], "CARLA authority")
-        self.assertEqual(skipped["one-point"], "fewer than 2 recorded points")
+        self.assertNotIn("one-point", skipped)
         self.assertEqual(skipped["walker"], "not a vehicle")
 
 

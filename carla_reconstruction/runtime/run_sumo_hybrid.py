@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run SUMO moving traffic with CARLA-authority ego, critical, and static vehicles."""
+"""Run SUMO moving traffic with a CARLA ego and CARLA-fixed static vehicles."""
 
 import argparse
 import json
@@ -23,6 +23,8 @@ from carla_reconstruction.closed_loop.controllers import ReferencePathController
 from carla_reconstruction.closed_loop.hybrid_authority import (  # noqa: E402
     STATIC_AUTHORITY, actor_spawn_policy, configured_carla_actor_specs)
 from carla_reconstruction.closed_loop.metrics import SafetyMetrics  # noqa: E402
+from carla_reconstruction.closed_loop.safety_variants import (  # noqa: E402
+    validate_sumo_variant)
 from carla_reconstruction.closed_loop.sumo_runtime import (  # noqa: E402
     SumoRouteContinuator)
 from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
@@ -32,6 +34,23 @@ from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
 def _load_json(path):
     with open(path, "r", encoding="utf-8") as stream:
         return json.load(stream)
+
+
+def _validate_unbounded_variant_route_report(route_report):
+    """Reject stale behavior configs after their SUMO base was re-prepared."""
+    moving_speed = route_report.get("moving_speed") or {}
+    if moving_speed.get("policy") != "unbounded":
+        raise ValueError(
+            "SUMO behavior variant route report is not unbounded; regenerate "
+            "the safety base and variants with --moving-speed-policy unbounded")
+    capped_ids = sorted(
+        str(item.get("sumo_id") or item.get("id"))
+        for item in route_report.get("included", [])
+        if item.get("sumo_max_speed_mps") is not None)
+    if capped_ids:
+        raise ValueError(
+            "SUMO behavior variant route report contains stale maxSpeed caps "
+            "for %s; regenerate the safety base and variants" % capped_ids)
 
 
 def _find_sumo_home(explicit):
@@ -290,6 +309,144 @@ def _install_sumo_route_continuation(
         extend_and_report()
 
     sumo_simulation.tick = tick_with_route_continuation
+
+
+def _install_sumo_behavior_variant(sumo_simulation, variant):
+    """Apply one resolved profile to every loaded/active SUMO mover.
+
+    The wrapper is installed outside mover fidelity and inside route
+    continuation.  Its pre-pass configures loaded-but-not-yet-departed actors;
+    its post-pass catches actors loaded during the current simulation step.
+    """
+    state = {
+        "enabled": variant is not None,
+        "variant_id": None if variant is None else variant["variant_id"],
+        "configured_ids": (
+            [] if variant is None else
+            list(variant["scope"]["sumo_vehicle_ids"])),
+        "applied_ids": set(),
+        "applied_at_s": {},
+        "application_phase": {},
+        "attempts": {},
+        "active_attempts": {},
+        "failures": {},
+        "baseline_readback": {},
+        "effective_readback": {},
+        "safety_modes_at_application": {},
+    }
+    if variant is None:
+        return state
+
+    import traci
+
+    original_tick = sumo_simulation.tick
+    targets = set(state["configured_ids"])
+    vehicle = traci.vehicle
+    lane_keys = {
+        "lc_strategic": "lcStrategic",
+        "lc_cooperative": "lcCooperative",
+        "lc_speed_gain": "lcSpeedGain",
+        "lc_keep_right": "lcKeepRight",
+        "lc_assertive": "lcAssertive",
+    }
+
+    def readback(sumo_id):
+        return {
+            "car_following": {
+                "tau_s": float(vehicle.getTau(sumo_id)),
+                "min_gap_m": float(vehicle.getMinGap(sumo_id)),
+                "accel_mps2": float(vehicle.getAccel(sumo_id)),
+                "decel_mps2": float(vehicle.getDecel(sumo_id)),
+                "apparent_decel_mps2": float(
+                    vehicle.getApparentDecel(sumo_id)),
+                "emergency_decel_mps2": float(
+                    vehicle.getEmergencyDecel(sumo_id)),
+            },
+            "lane_changing": {
+                key: float(vehicle.getParameter(
+                    sumo_id, "laneChangeModel.%s" % traci_name))
+                for key, traci_name in lane_keys.items()
+            },
+        }
+
+    def apply_one(sumo_id, now, phase):
+        requested = variant["vehicles"][sumo_id]
+        baseline = readback(sumo_id)
+        car_following = requested["car_following"]
+        lane_changing = requested["lane_changing"]
+        vehicle.setTau(sumo_id, car_following["tau_s"])
+        vehicle.setMinGap(sumo_id, car_following["min_gap_m"])
+        vehicle.setAccel(sumo_id, car_following["accel_mps2"])
+        vehicle.setDecel(sumo_id, car_following["decel_mps2"])
+        vehicle.setApparentDecel(
+            sumo_id, car_following["apparent_decel_mps2"])
+        vehicle.setEmergencyDecel(
+            sumo_id, car_following["emergency_decel_mps2"])
+        for key, traci_name in lane_keys.items():
+            vehicle.setParameter(
+                sumo_id, "laneChangeModel.%s" % traci_name,
+                "%.12g" % lane_changing[key])
+        effective = readback(sumo_id)
+        for group in ("car_following", "lane_changing"):
+            for key, expected in requested[group].items():
+                actual = effective[group][key]
+                if abs(float(expected) - actual) > 1.0e-5:
+                    raise RuntimeError(
+                        "%s read-back mismatch for %s: requested %.9g, got %.9g" %
+                        (key, sumo_id, float(expected), actual))
+        state["baseline_readback"][sumo_id] = baseline
+        state["effective_readback"][sumo_id] = effective
+        state["applied_ids"].add(sumo_id)
+        state["applied_at_s"][sumo_id] = now
+        state["application_phase"][sumo_id] = phase
+        state["failures"].pop(sumo_id, None)
+        speed_mode = getattr(vehicle, "getSpeedMode", None)
+        lane_mode = getattr(vehicle, "getLaneChangeMode", None)
+        state["safety_modes_at_application"][sumo_id] = {
+            "speed_mode": (
+                int(speed_mode(sumo_id)) if speed_mode is not None else None),
+            "lane_change_mode": (
+                int(lane_mode(sumo_id)) if lane_mode is not None else None),
+        }
+
+    def apply_available(phase):
+        now = float(traci.simulation.getTime())
+        active = set(str(value) for value in vehicle.getIDList())
+        loaded = set()
+        get_loaded = getattr(traci.simulation, "getLoadedIDList", None)
+        if get_loaded is not None:
+            loaded = set(str(value) for value in get_loaded())
+        candidates = sorted((active | loaded).intersection(
+            targets - state["applied_ids"]))
+        for sumo_id in candidates:
+            state["attempts"][sumo_id] = (
+                state["attempts"].get(sumo_id, 0) + 1)
+            if sumo_id in active:
+                state["active_attempts"][sumo_id] = (
+                    state["active_attempts"].get(sumo_id, 0) + 1)
+            try:
+                apply_one(sumo_id, now, phase)
+            except Exception as exc:
+                state["failures"][sumo_id] = str(exc)
+                # Loaded actors may not yet accept every command on older SUMO
+                # releases.  Retry after departure, but never silently keep an
+                # active mover unconfigured for multiple ticks.
+                if (sumo_id in active and
+                        state["active_attempts"][sumo_id] >= 3):
+                    raise RuntimeError(
+                        "could not apply SUMO behavior variant %s to active "
+                        "vehicle %s after %d active attempts: %s" %
+                        (variant["variant_id"], sumo_id,
+                         state["active_attempts"][sumo_id], exc))
+
+    def tick_with_behavior_variant():
+        apply_available("pre_tick")
+        original_tick()
+        apply_available("post_tick")
+
+    sumo_simulation.tick = tick_with_behavior_variant
+    state["_apply_available"] = apply_available
+    return state
 
 
 def _apply_reference_track_control(
@@ -706,6 +863,39 @@ def run(args):
         except Exception as exc:
             print("WARNING: moving-vehicle lifecycle report is unavailable:", exc)
 
+    raw_sumo_behavior_variant = config.get("sumo_behavior_variant")
+    sumo_behavior_variant = None
+    if raw_sumo_behavior_variant is not None:
+        if not expected_sumo_ids:
+            raise ValueError(
+                "SUMO behavior variants require a readable route report with "
+                "moving vehicle IDs")
+        if config.get("critical_actors"):
+            raise ValueError(
+                "SUMO behavior variants cannot contain CARLA critical actors; "
+                "rerun prepare_sumo.py without --critical-actor")
+        background = config.get("background") or {}
+        if background.get("authority") != "sumo":
+            raise ValueError(
+                "SUMO behavior variants require background.authority=sumo")
+        moving_speed_section = background.get("moving_speed") or {}
+        if moving_speed_section.get("policy") != "unbounded":
+            raise ValueError(
+                "SUMO behavior variants require autonomous moving speed "
+                "control (background.moving_speed.policy=unbounded)")
+        _validate_unbounded_variant_route_report(route_report)
+        legacy_exclusions = [
+            str(item.get("id")) for item in route_report.get("skipped", [])
+            if item.get("reason") == "CARLA authority"
+        ]
+        if legacy_exclusions:
+            raise ValueError(
+                "route report still excludes CARLA-authority vehicles %s; "
+                "regenerate it without --critical-actor" %
+                sorted(legacy_exclusions))
+        sumo_behavior_variant = validate_sumo_variant(
+            raw_sumo_behavior_variant, expected_sumo_ids)
+
     spawn_schedule = config.get("spawn_schedule")
     if spawn_schedule is None:
         # Configurations generated before staged startup support keep their
@@ -834,6 +1024,20 @@ def run(args):
         "terminal_release_track_time_s": {},
         "failures": {},
     }
+    sumo_behavior_state = {
+        "enabled": False,
+        "variant_id": None,
+        "configured_ids": [],
+        "applied_ids": set(),
+        "applied_at_s": {},
+        "application_phase": {},
+        "attempts": {},
+        "active_attempts": {},
+        "failures": {},
+        "baseline_readback": {},
+        "effective_readback": {},
+        "safety_modes_at_application": {},
+    }
 
     def update_sumo_lifecycle(sim_time):
         """Record expected nuScenes movers as they pass through the bridge."""
@@ -898,6 +1102,8 @@ def run(args):
                 "terminal_stop_maximum_extent_m", 1.0),
             terminal_stop_minimum_duration=moving_speed.get(
                 "terminal_stop_minimum_duration_s", 2.0))
+        sumo_behavior_state = _install_sumo_behavior_variant(
+            sumo_simulation, sumo_behavior_variant)
         if runtime_route_continuation_requested:
             if not expected_sumo_ids:
                 runtime_route_continuation_metadata["reason"] = (
@@ -1064,6 +1270,11 @@ def run(args):
             print("SUMO mover fidelity: %s initial pose; %s speed (%d actors)" % (
                 mover_position_policy, mover_speed_policy,
                 mover_fidelity["configured"]))
+        if sumo_behavior_state["enabled"]:
+            print("SUMO behavior experiment: %s targets all %d moving "
+                  "background vehicle(s); autonomous speed control is active" %
+                  (sumo_behavior_state["variant_id"],
+                   len(sumo_behavior_state["configured_ids"])))
         if mover_fidelity["terminal_release_track_time_s"]:
             print("SUMO terminal-stop fallback: %d recorded stationary "
                   "tail(s) will release to autonomous SUMO control" %
@@ -1307,6 +1518,33 @@ def run(args):
                 "terminal_release_track_time_s"],
             "failures": mover_fidelity["failures"],
         }
+        sumo_behavior_metadata = {
+            "enabled": bool(sumo_behavior_state["enabled"]),
+            "variant_id": sumo_behavior_state["variant_id"],
+            "configuration": sumo_behavior_variant,
+            "configured_ids": list(sumo_behavior_state["configured_ids"]),
+            "applied_ids": sorted(sumo_behavior_state["applied_ids"]),
+            "unapplied_ids": sorted(
+                set(sumo_behavior_state["configured_ids"]) -
+                set(sumo_behavior_state["applied_ids"])),
+            "applied_at_s": dict(sorted(
+                sumo_behavior_state["applied_at_s"].items())),
+            "application_phase": dict(sorted(
+                sumo_behavior_state["application_phase"].items())),
+            "attempts": dict(sorted(
+                sumo_behavior_state["attempts"].items())),
+            "active_attempts": dict(sorted(
+                sumo_behavior_state["active_attempts"].items())),
+            "failures": dict(sorted(
+                sumo_behavior_state["failures"].items())),
+            "baseline_readback": dict(sorted(
+                sumo_behavior_state["baseline_readback"].items())),
+            "effective_readback": dict(sorted(
+                sumo_behavior_state["effective_readback"].items())),
+            "safety_modes_at_application": dict(sorted(
+                sumo_behavior_state[
+                    "safety_modes_at_application"].items())),
+        }
         final_sumo_states = {}
         final_sumo_state_error = None
         try:
@@ -1438,6 +1676,7 @@ def run(args):
             },
             "sumo_mover_lifecycle": lifecycle_metadata,
             "sumo_mover_fidelity": mover_fidelity_metadata,
+            "sumo_behavior_variant": sumo_behavior_metadata,
             "sumo_runtime_route_continuation": (
                 runtime_route_continuation_metadata),
             "reference_track_end_control": {
