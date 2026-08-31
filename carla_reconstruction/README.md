@@ -82,28 +82,28 @@ original nuScenes-derived OpenDRIVE as the runtime authority.
 
 The export block below is **MATLAB code, not an Anaconda Prompt command**.
 Run it from the MATLAB Command Window (or save it as a `.m` script). Start
-MATLAB, then paste the following example for scene-0553:
+MATLAB, then paste the following example for scene-1094:
 
 ```matlab
 addpath("D:\nuscenes-roadrunner-carla\carla_reconstruction");
 
-manifest = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json";
+manifest = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json";
 project = "D:\nuscenes-roadrunner-carla\nuscenes_test1";
 out = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\fbx";
 fbx = export_roadrunner_base(manifest, project, out);
 ```
 
 Wait until MATLAB prints both `Exported CARLA road geometry` and `Exported
-CARLA material metadata`. For scene-0553, the required outputs are
-`Nusc_boston_seaport_0553.fbx` and
-`Nusc_boston_seaport_0553.rrdata.xml` in `generated\fbx`.
+CARLA material metadata`. For scene-1094, the required outputs are
+`Nusc_singapore_hollandvillage_1094.fbx` and
+`Nusc_singapore_hollandvillage_1094.rrdata.xml` in `generated\fbx`.
 
 As an alternative, the same MATLAB export can be launched from an Anaconda
 Prompt at the repository root. This works because `matlab` is on this machine's
 `PATH`; the quoted text after `-batch` is still evaluated by MATLAB:
 
 ```bat
-matlab -batch "addpath('D:\nuscenes-roadrunner-carla\carla_reconstruction'); manifest='D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json'; project='D:\nuscenes-roadrunner-carla\nuscenes_test1'; out='D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\fbx'; export_roadrunner_base(manifest, project, out);"
+matlab -batch "addpath('D:\nuscenes-roadrunner-carla\carla_reconstruction'); manifest='D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json'; project='D:\nuscenes-roadrunner-carla\nuscenes_test1'; out='D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\fbx'; export_roadrunner_base(manifest, project, out);"
 ```
 
 The exporter defaults to the installed RoadRunner R2024a location:
@@ -118,12 +118,12 @@ FBX and `.rrdata.xml` generated from that same manifest.
 After one scene's FBX export succeeds, return to the Anaconda Prompt at
 `D:\nuscenes-roadrunner-carla` and stage that scene's CARLA import package.
 The staging tool accepts one manifest/FBX pair per invocation. Example for
-scene-0553:
+scene-1094:
 
 ```bat
 python carla_reconstruction\tools\prepare_import_package.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json ^
-  --fbx carla_reconstruction\generated\fbx\Nusc_boston_seaport_0553.fbx ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  --fbx carla_reconstruction\generated\fbx\Nusc_singapore_hollandvillage_1094.fbx ^
   --output-root carla_reconstruction\generated\import
 ```
 
@@ -135,8 +135,8 @@ folder, so separately staged scenes do not overwrite one another.
 
 Review the staged packages. Copy only the new package folders to
 `C:\carla\Import` when ready, then run CARLA's normal `make import` process.
-For scene-0553 the expected imported source level is
-`/Game/Nusc_boston_seaport_0553/Maps/Nusc_boston_seaport_0553/Nusc_boston_seaport_0553`.
+For scene-1094 the expected imported source level is
+`/Game/Nusc_singapore_hollandvillage_1094/Maps/Nusc_singapore_hollandvillage_1094/Nusc_singapore_hollandvillage_1094`.
 The staging tool intentionally refuses to write directly into the CARLA
 repository. After import, run the decoration and finalization commands in the
 next section once per manifest.
@@ -149,7 +149,7 @@ preserved.
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\launch_build.ps1 ^
-  -Manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
   -AllowCarlaWrite
 ```
 
@@ -203,7 +203,7 @@ same-named OpenDRIVE file in the imported package:
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\finalize_decorated_map.ps1 ^
-  -Manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
   -AllowCarlaWrite
 ```
 
@@ -215,7 +215,7 @@ The waypoint graph can be checked offline without starting a CARLA server:
 
 ```bat
 python carla_reconstruction\tools\validate_waypoint_topology.py ^
-  --xodr C:\carla\Unreal\CarlaUE4\Content\Nusc_boston_seaport_0103\Maps\Nusc_boston_seaport_0103\OpenDrive\Nusc_boston_seaport_0103_Decorated.xodr
+  --xodr C:\carla\Unreal\CarlaUE4\Content\Nusc_boston_seaport_0553\Maps\Nusc_boston_seaport_0553\OpenDrive\Nusc_boston_seaport_0553_Decorated.xodr
 ```
 
 For this scene, a correct report contains 41 successful intersection entrances,
@@ -242,7 +242,7 @@ the CARLA 0.9.15 Python environment:
 ```bat
 conda activate carla_0915
 python carla_reconstruction\runtime\replay_persistent.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0757\scene_manifest.json ^
   --cameras --record
 ```
 

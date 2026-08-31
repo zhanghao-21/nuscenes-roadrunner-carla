@@ -43,13 +43,12 @@ same-named `.xodr`. Re-run the local finalizer after updating this repository:
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\finalize_decorated_map.ps1 ^
-  -Manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
   -AllowCarlaWrite
 ```
 
-The script copies
-`Nusc_boston_seaport_0103.bin` to
-`Nusc_boston_seaport_0103_Decorated.bin` without changing the base file.
+The script installs the matching Traffic Manager `.bin` for the decorated map
+without changing the base map data.
 
 The saved level must not contain ungrouped `NSRC_TrafficLight_*` actors. The
 decorator now rejects visual traffic-light placement because those Blueprints
@@ -60,7 +59,7 @@ installation with a read-only check:
 
 ```bat
 python carla_reconstruction\tools\check_closed_loop.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json
 ```
 
 ## 2. Run the CARLA Traffic Manager baseline
@@ -71,7 +70,7 @@ Recorded ego plus interactive surrounding vehicles (partially closed-loop):
 
 ```bat
 python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0757\scene_manifest.json ^
   --ego-mode replay --replay-pedestrians
 ```
 
@@ -80,7 +79,7 @@ baseline, but not an AV-under-test):
 
 ```bat
 python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0757\scene_manifest.json ^
   --ego-mode tm --replay-pedestrians
 ```
 
@@ -111,13 +110,15 @@ spaces and the apostrophe in the OneDrive source path.
 ```bat
 set "SUMO_HOME=C:\Traffic software\SUMO"
 python carla_reconstruction\tools\prepare_sumo.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0757\scene_manifest.json ^
+  --keep-existing-net ^
+  --enable-prediction-risk
 ```
 
 Outputs are written under:
 
 ```text
-carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo
+carla_reconstruction\generated\closed_loop\boston-seaport_scene-0757\sumo
 ```
 
 They include `network.net.xml`, `routes.rou.xml`, `scene.sumocfg`,
@@ -293,16 +294,15 @@ repeat options such as `--enable-prediction-risk` and any intentional timing
 override whenever regenerating the corresponding experiment. Do not pass
 `--critical-actor` for the all-SUMO safety-variant pipeline.
 
-For the current scene-0103 conversion at the default boundaries, preparation
-finds 11 moving SUMO vehicles and 56 fixed CARLA vehicles (51 multi-sample
-stationary tracks plus 5 single-observation tracks). The 46 pedestrian tracks
-are outside SUMO route generation.
+For the current scene-0757 conversion at the default boundaries, preparation
+finds 17 moving SUMO vehicles and 5 fixed CARLA vehicles. Two non-vehicle
+tracks are outside SUMO route generation.
 
 Optional standalone validation:
 
 ```bat
 "%SUMO_HOME%\bin\sumo.exe" ^
-  -c carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\scene.sumocfg ^
+  -c carla_reconstruction\generated\closed_loop\boston-seaport_scene-0757\sumo\scene.sumocfg ^
   --no-step-log true --duration-log.statistics true
 ```
 
@@ -317,7 +317,7 @@ both simulators.
 
 ```bat
 python carla_reconstruction\runtime\run_sumo_hybrid.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\hybrid_config.json ^
+  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0757\sumo\hybrid_config.json ^
   --sumo-gui --ego-mode reference
 ```
 
@@ -417,7 +417,7 @@ second dashboard command. Run the same command shown above exactly as written:
 
 ```bat
 python carla_reconstruction\runtime\run_sumo_hybrid.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\hybrid_config.json ^
+  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0757\sumo\hybrid_config.json ^
   --sumo-gui --ego-mode reference
 ```
 
@@ -425,7 +425,7 @@ Future configurations can opt in while being generated:
 
 ```bat
 python carla_reconstruction\tools\prepare_sumo.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0757\scene_manifest.json ^
   --enable-prediction-risk
 ```
 
@@ -553,7 +553,7 @@ If the dashboard does not open:
 
    ```bat
    python carla_reconstruction\runtime\run_sumo_hybrid.py ^
-     --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\hybrid_config.json ^
+     --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0757\sumo\hybrid_config.json ^
      --sumo-gui --ego-mode reference ^
      --prediction-risk
    ```
@@ -583,17 +583,17 @@ is not claimed by the offline test suite.
 ## 5. Generate the all-SUMO hybrid variants
 
 This pipeline has no selected critical vehicle. The ego remains in CARLA, all
-11 classified moving surrounding vehicles in scene-0103 are controlled by
-SUMO, and all 56 fixed surrounding vehicles remain visible in CARLA. First
-prepare a clean hybrid baseline **without** `--critical-actor`:
+classified moving surrounding vehicles are controlled by SUMO, and all fixed
+surrounding vehicles remain visible in CARLA. First prepare a clean hybrid
+baseline **without** `--critical-actor`:
 
 ```bat
 set "SUMO_HOME=C:\Traffic software\SUMO"
 
 python carla_reconstruction\tools\prepare_sumo.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
-  --output carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base ^
-  --net-file carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo\network.net.xml ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  --output carla_reconstruction\generated\closed_loop\singapore-hollandvillage_scene-1094\sumo_safety_base ^
+  --net-file carla_reconstruction\generated\closed_loop\singapore-hollandvillage_scene-1094\sumo\network.net.xml ^
   --moving-speed-policy unbounded ^
   --enable-prediction-risk
 ```
@@ -615,14 +615,14 @@ Generate a matched baseline and 20 deterministic Latin-hypercube variants:
 
 ```bat
 python carla_reconstruction\tools\generate_sumo_safety_variants.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\hybrid_config.json ^
+  --config carla_reconstruction\generated\closed_loop\singapore-hollandvillage_scene-1094\sumo_safety_base\hybrid_config.json ^
   --count 20
 ```
 
 The output folder is:
 
 ```text
-carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants
+carla_reconstruction\generated\closed_loop\singapore-hollandvillage_scene-1094\sumo_safety_base\sumo_safety_variants
 ```
 
 It contains `baseline.json`, `variant_000.json` through `variant_019.json`, and
@@ -651,16 +651,16 @@ Run the matched SUMO baseline:
 
 ```bat
 python carla_reconstruction\runtime\run_sumo_hybrid.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants\baseline.json ^
-  --sumo-gui --ego-mode reference
+  --config carla_reconstruction\generated\closed_loop\singapore-hollandvillage_scene-1094\sumo_safety_base\sumo_safety_variants\baseline.json ^
+  --sumo-gui --ego-mode tm
 ```
 
 Run one SUMO variant:
 
 ```bat
 python carla_reconstruction\runtime\run_sumo_hybrid.py ^
-  --config carla_reconstruction\generated\closed_loop\boston-seaport_scene-0103\sumo_safety_base\sumo_safety_variants\variant_001.json ^
-  --sumo-gui --ego-mode reference
+  --config carla_reconstruction\generated\closed_loop\singapore-hollandvillage_scene-1094\sumo_safety_base\sumo_safety_variants\variant_009.json ^
+  --sumo-gui --ego-mode tm
 ```
 
 The dashboard setting is copied from the prepared base configuration, so the
@@ -719,7 +719,7 @@ Run one CARLA variant:
 
 ```bat
 python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\variant_000.json ^
+  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\variant_001.json ^
   --ego-mode replay --replay-pedestrians
 ```
 
