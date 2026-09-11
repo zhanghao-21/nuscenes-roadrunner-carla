@@ -4,6 +4,10 @@ param(
     [string]$TargetLevel,
     [string]$CarlaRoot = "C:\carla",
     [string]$UnrealRoot = "C:\UnrealEngine",
+    [string]$Python = "python",
+    [ValidateSet("nuscenes", "opendrive")][string]$MarkingSource = "nuscenes",
+    [string]$MarkingMapJson,
+    [switch]$MarkingsOnly,
     [switch]$PlaceTrafficLights,
     [switch]$AllowCarlaWrite
 )
@@ -41,6 +45,9 @@ if (-not (Test-Path -LiteralPath $editor)) { throw "Missing Unreal editor: $edit
 
 $targetRelative = $TargetLevel -replace '^/Game/', ''
 $targetFile = Join-Path (Join-Path $CarlaRoot "Unreal\CarlaUE4\Content") ($targetRelative.Replace('/', '\') + ".umap")
+if ($MarkingsOnly -and -not (Test-Path -LiteralPath $targetFile)) {
+    throw "-MarkingsOnly requires an existing decorated level. Run a full build first."
+}
 if (Test-Path -LiteralPath $targetFile) {
     try {
         $lockProbe = [System.IO.File]::Open(
@@ -56,7 +63,23 @@ if (Test-Path -LiteralPath $targetFile) {
 }
 
 New-Item -ItemType Directory -Path $markingDirectory -Force | Out-Null
-& python $markingGenerator --manifest $manifestPath --output $markingObj
+if ($MarkingsOnly) {
+    $backup = Join-Path $scriptRoot ("generated\checkpoints\markings_" + $manifestData.map.asset_name + "_" + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
+    New-Item -ItemType Directory -Path $backup | Out-Null
+    Copy-Item -LiteralPath $targetFile -Destination $backup
+    $assetDir = Join-Path (Join-Path $CarlaRoot "Unreal\CarlaUE4\Content") ($manifestData.map.package_name + '\Static\Marking\' + $manifestData.map.asset_name)
+    if (Test-Path -LiteralPath $assetDir) {
+        Copy-Item -LiteralPath $assetDir -Destination (Join-Path $backup 'marking_assets') -Recurse
+    }
+    foreach ($extension in @('.obj', '.mtl', '.json')) {
+        $oldArtifact = [System.IO.Path]::ChangeExtension($markingObj, $extension)
+        if (Test-Path -LiteralPath $oldArtifact) { Copy-Item -LiteralPath $oldArtifact -Destination $backup }
+    }
+    Write-Output "Markings-only rollback checkpoint: $backup"
+}
+$generatorArgs = @('--manifest', $manifestPath, '--output', $markingObj, '--source', $MarkingSource)
+if ($MarkingMapJson) { $generatorArgs += @('--map-json', $MarkingMapJson) }
+& $Python $markingGenerator @generatorArgs
 if ($LASTEXITCODE -ne 0) { throw "Lane-marking mesh generation failed with exit code $LASTEXITCODE" }
 $markingObj = (Resolve-Path -LiteralPath $markingObj).Path
 if (Test-Path -LiteralPath $resultPath) { Remove-Item -LiteralPath $resultPath -Force }
@@ -68,6 +91,7 @@ $env:NUSC_CARLA_RESULT = $resultPath
 $env:NUSC_CARLA_SOURCE_LEVEL = $SourceLevel
 $env:NUSC_CARLA_TARGET_LEVEL = $TargetLevel
 $env:NUSC_CARLA_PLACE_TRAFFIC_LIGHTS = if ($PlaceTrafficLights) { "1" } else { "0" }
+$env:NUSC_CARLA_MARKINGS_ONLY = if ($MarkingsOnly) { "1" } else { "0" }
 
 & $editor $uproject "-ExecutePythonScript=$pythonScript" -unattended -nop4
 $editorExitCode = $LASTEXITCODE

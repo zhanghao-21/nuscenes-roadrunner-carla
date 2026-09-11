@@ -153,6 +153,8 @@ class MarkingMesh:
     accepted_base_segments: int = 0
     duplicate_base_segments: int = 0
     collapsed_double_broken_definitions: int = 0
+    source_kind: str = "opendrive"
+    metadata: dict = field(default_factory=dict)
 
     def add_ribbon(self, points, width_m, color):
         if len(points) < 2:
@@ -406,7 +408,7 @@ def write_obj(mesh, obj_path):
         stream.write("newmtl LaneMarkingWhite\nKd 0.82 0.82 0.78\nKs 0.05 0.05 0.05\nNs 8\n\n")
         stream.write("newmtl LaneMarkingYellow\nKd 0.95 0.70 0.05\nKs 0.05 0.05 0.05\nNs 8\n")
     with open(obj_path, "w", encoding="ascii", newline="\n") as stream:
-        stream.write("# Generated from OpenDRIVE roadMark records\n")
+        stream.write("# Generated from %s marking records\n" % mesh.source_kind)
         stream.write("mtllib %s.mtl\n" % stem)
         stream.write("o LaneMarkings\n")
         for x, y, z in mesh.vertices:
@@ -420,6 +422,7 @@ def write_obj(mesh, obj_path):
             for face in mesh.faces[color]:
                 stream.write("f %d//1 %d//1 %d//1 %d//1\n" % face)
     stats = {
+        "source_kind": mesh.source_kind,
         "vertices": len(mesh.vertices),
         "faces": sum(len(items) for items in mesh.faces.values()),
         "faces_by_color": {key: len(value) for key, value in mesh.faces.items()},
@@ -433,6 +436,16 @@ def write_obj(mesh, obj_path):
         "units": "unreal_centimetres",
         "coordinate_frame": "opendrive_x_y_z; Unreal OBJ import converts Y",
     }
+    if mesh.source_kind != "opendrive":
+        stats["source_divider_style_runs"] = stats.pop("source_road_mark_definitions")
+        stats["rendered_divider_style_runs"] = stats.pop("rendered_road_mark_definitions")
+    if mesh.vertices:
+        converted = [(x, -y, z) for x, y, z in mesh.vertices]
+        stats["expected_unreal_bounds_cm"] = {
+            "min": [min(p[i] for p in converted) for i in range(3)],
+            "max": [max(p[i] for p in converted) for i in range(3)],
+        }
+    stats.update(mesh.metadata)
     with open(os.path.splitext(obj_path)[0] + ".json", "w", encoding="utf-8") as stream:
         json.dump(stats, stream, indent=2)
         stream.write("\n")

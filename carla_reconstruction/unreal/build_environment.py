@@ -66,13 +66,34 @@ def mark_actor(actor, label, folder, collision=True):
     actor.set_actor_enable_collision(collision)
 
 
-def delete_previous():
+def delete_previous(markings_only=False):
     removed = 0
+    owned_prefix = PREFIX + "LaneMarkings_" if markings_only else PREFIX
     for actor in list(unreal.EditorLevelLibrary.get_all_level_actors()):
-        if actor.get_actor_label().startswith(PREFIX):
+        if actor.get_actor_label().startswith(owned_prefix):
             if unreal.EditorLevelLibrary.destroy_actor(actor):
                 removed += 1
     log("removed %d previously generated actors" % removed)
+
+
+def unrelated_actor_fingerprint():
+    """Audit actor identity/transforms/materials during a markings-only edit."""
+    records = []
+    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+        if actor.get_actor_label().startswith(PREFIX + "LaneMarkings_"):
+            continue
+        location, rotation, scale = (actor.get_actor_location(), actor.get_actor_rotation(),
+                                     actor.get_actor_scale3d())
+        component = actor.get_component_by_class(unreal.StaticMeshComponent)
+        materials = ([component.get_material(i).get_path_name()
+                      if component.get_material(i) is not None else None
+                      for i in range(component.get_num_materials())] if component else [])
+        records.append([actor.get_path_name(), actor.get_actor_label(),
+                        [location.x, location.y, location.z],
+                        [rotation.pitch, rotation.yaw, rotation.roll],
+                        [scale.x, scale.y, scale.z], materials])
+    digest = hashlib.sha256(json.dumps(sorted(records), sort_keys=True).encode("utf-8")).hexdigest()
+    return {"actor_count": len(records), "sha256": digest}
 
 
 def load_blueprint(path):
@@ -175,7 +196,9 @@ def import_lane_marking_asset(manifest, obj_path):
     return mesh
 
 
-def add_lane_markings(manifest, catalog, mesh):
+def add_lane_markings(manifest, catalog, mesh, stats=None):
+    if mesh is None:
+        return 0
     actor = unreal.EditorLevelLibrary.spawn_actor_from_object(
         mesh, unreal.Vector(), unreal.Rotator(), transient=False)
     if actor is None:
@@ -196,6 +219,15 @@ def add_lane_markings(manifest, catalog, mesh):
             log("lane-marking slot %s -> %s" % (slot_name, chosen.get_path_name()))
     component.set_editor_property("receives_decals", False)
     mark_actor(actor, "LaneMarkings_OpenDRIVE", "LaneMarkings", collision=False)
+    if stats and stats.get("expected_unreal_bounds_cm"):
+        origin, extent = actor.get_actor_bounds(False)
+        actual = {"min": [origin.x - extent.x, origin.y - extent.y, origin.z - extent.z],
+                  "max": [origin.x + extent.x, origin.y + extent.y, origin.z + extent.z]}
+        expected = stats["expected_unreal_bounds_cm"]
+        if any(abs(actual[key][i] - expected[key][i]) > 2.0
+               for key in ("min", "max") for i in range(3)):
+            raise RuntimeError("imported marking bounds do not match expected CARLA axes: " + str(actual))
+        stats["verified_unreal_bounds_cm"] = actual
     return 1
 
 
@@ -356,34 +388,48 @@ def main():
     target_level = required_env("NUSC_CARLA_TARGET_LEVEL")
     manifest = read_json(manifest_path)
     catalog = read_json(catalog_path)
+    markings_only = os.environ.get("NUSC_CARLA_MARKINGS_ONLY", "0") == "1"
+    if markings_only and not unreal.EditorAssetLibrary.does_asset_exist(target_level):
+        raise RuntimeError("markings-only rebuild requires an existing decorated level")
     log("building %s into %s" % (manifest["scene"], target_level))
     prepare_level(source_level, target_level)
-    marking_mesh = import_lane_marking_asset(
-        manifest, required_env("NUSC_CARLA_MARKINGS_OBJ"))
+    before = unrelated_actor_fingerprint() if markings_only else None
+    marking_obj = required_env("NUSC_CARLA_MARKINGS_OBJ")
+    marking_stats = read_json(os.path.splitext(marking_obj)[0] + ".json")
+    marking_mesh = (import_lane_marking_asset(manifest, marking_obj)
+                    if marking_stats["vertices"] else None)
     with unreal.ScopedEditorTransaction("Rebuild nuScenes environment"):
-        delete_previous()
-        counts = {
+        delete_previous(markings_only=markings_only)
+        counts = ({"lane_markings": add_lane_markings(manifest, catalog, marking_mesh, marking_stats)}
+                  if markings_only else {
             "road_surfaces": apply_road_surface_material(manifest, catalog),
-            "lane_markings": add_lane_markings(manifest, catalog, marking_mesh),
+            "lane_markings": add_lane_markings(manifest, catalog, marking_mesh, marking_stats),
             "buildings": add_buildings(manifest, catalog),
             "trees": add_trees(manifest, catalog),
             "traffic_signs": add_signs(manifest, catalog),
             "nuscenes_static_objects": add_nuscenes_static_objects(manifest, catalog),
             "traffic_lights": add_traffic_lights(manifest, catalog),
-        }
+        })
+    after = unrelated_actor_fingerprint() if markings_only else None
+    if markings_only and before != after:
+        raise RuntimeError("markings-only rebuild changed an unrelated actor; level was not saved")
     if not unreal.EditorLevelLibrary.save_current_level():
         raise RuntimeError("Unreal failed to save the current level")
     result_path = required_env("NUSC_CARLA_RESULT")
     with open(result_path, "w") as stream:
         json.dump({"status": "success", "target_level": target_level,
-                   "counts": counts}, stream, indent=2)
+                   "counts": counts, "markings_only": markings_only,
+                   "unrelated_actors_before": before, "unrelated_actors_after": after,
+                   "marking_source": marking_stats.get("source_kind", "opendrive"),
+                   "verified_unreal_bounds_cm": marking_stats.get("verified_unreal_bounds_cm")}, stream, indent=2)
         stream.write("\n")
     log("saved %s with %s" % (target_level, counts))
 
 
-try:
-    main()
-except Exception as exc:
-    unreal.log_error("[nuScenes CARLA] build failed: " + str(exc))
-    unreal.log_error(traceback.format_exc())
-    raise
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        unreal.log_error("[nuScenes CARLA] build failed: " + str(exc))
+        unreal.log_error(traceback.format_exc())
+        raise

@@ -19,10 +19,19 @@ from carla_reconstruction.closed_loop.carla_runtime import (  # noqa: E402
     configure_tm_actor, default_run_output, place_from_point, spawn_track_actor)
 from carla_reconstruction.closed_loop.metrics import SafetyMetrics  # noqa: E402
 from carla_reconstruction.closed_loop.safety_variants import (  # noqa: E402
-    load_carla_variant, validate_carla_seed)
+    carla_behavior_for_track, load_carla_variant, validate_carla_seed)
 from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
     DEFAULT_MINIMUM_TRACK_DISTANCE_M, DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS,
     classify_vehicle_motion, load_manifest_tracks, point_at)
+
+
+def _resolve_ego_mode(requested, variant):
+    required = variant.get("ego_mode") if variant is not None else None
+    if required is not None and requested is not None and requested != required:
+        raise ValueError(
+            "this CARLA perturbation experiment requires --ego-mode tm "
+            "for both the baseline and variants")
+    return requested or required or "replay"
 
 
 def run(args):
@@ -30,6 +39,7 @@ def run(args):
     variant_path = os.path.abspath(variant_path) if variant_path else None
     behavior_variant = (
         load_carla_variant(variant_path) if variant_path else None)
+    ego_mode = _resolve_ego_mode(getattr(args, "ego_mode", None), behavior_variant)
     requested_manifest = getattr(args, "manifest", None)
     if requested_manifest:
         requested_manifest = os.path.abspath(requested_manifest)
@@ -93,11 +103,12 @@ def run(args):
                 "variant with --max-vehicles or a changed manifest." %
                 (sorted(expected_retained_ids - effective_retained_ids),
                  sorted(effective_retained_ids - expected_retained_ids)))
-        expected_variant_ids = set(selection["eligible_track_ids"])
+        expected_variant_ids = set(selection.get(
+            "moving_surrounding_track_ids", selection["eligible_track_ids"]))
         effective_variant_ids = set(moving_track_ids)
         if expected_variant_ids != effective_variant_ids:
             raise ValueError(
-                "CARLA variant must target every moving surrounding vehicle; "
+                "CARLA variant must preserve every moving surrounding vehicle; "
                 "missing=%s extra=%s. Do not combine a generated variant with "
                 "a different --max-vehicles or motion threshold." %
                 (sorted(expected_variant_ids - effective_variant_ids),
@@ -129,25 +140,29 @@ def run(args):
     offsets = {}
     authority = {}
     variant_applied = {}
+    tm_behavior_applied = {}
     metrics = SafetyMetrics()
     clock = [0.0]
     collision_monitor = None
     spectator = world.get_spectator()
 
-    ego_physics = args.ego_mode != "replay"
-    ego, ego_offset = spawn_track_actor(
-        world, bundle.ego, projector, "hero", physics=ego_physics)
-    if ego is None:
-        raise RuntimeError("could not spawn ego vehicle")
-    spawned["ego"] = ego
-    offsets["ego"] = ego_offset
-    authority["ego"] = "carla_%s" % args.ego_mode
-    if args.ego_mode == "tm":
-        configure_tm_actor(
-            traffic_manager, ego, bundle.ego, args.tm_port,
+    def configure_track(actor, track, sim_time):
+        applied = configure_tm_actor(
+            traffic_manager, actor, track, args.tm_port,
             args.path_spacing, args.leading_distance, args.auto_lane_change,
-            args.minimum_speed_kmh)
-    collision_monitor = CollisionMonitor(world, ego, metrics, lambda: clock[0])
+            args.minimum_speed_kmh,
+            behavior_variant=carla_behavior_for_track(
+                behavior_variant, track.actor_id))
+        targeted = track.actor_id in selection.get("eligible_track_ids", [])
+        record = {
+            "carla_actor_id": int(actor.id),
+            "behavior": applied,
+            "applied_at_s": float(sim_time),
+            "profile_role": "target" if targeted else "baseline",
+        }
+        tm_behavior_applied[track.actor_id] = record
+        if targeted:
+            variant_applied[track.actor_id] = record
 
     # Keep every recorded vehicle in the CARLA-only baseline. A vehicle with a
     # single observation has no defensible route, so it is rendered as fixed;
@@ -173,19 +188,7 @@ def run(args):
             live_tracks[actor_id] = track
             if moving:
                 authority[actor_id] = "carla_tm"
-                applied = configure_tm_actor(
-                    traffic_manager, actor, track, args.tm_port,
-                    args.path_spacing, args.leading_distance,
-                    args.auto_lane_change, args.minimum_speed_kmh,
-                    behavior_variant=(
-                        behavior_variant["behavior"]
-                        if behavior_variant is not None else None))
-                if behavior_variant is not None:
-                    variant_applied[actor_id] = {
-                        "carla_actor_id": int(actor.id),
-                        "behavior": applied,
-                        "applied_at_s": float(sim_time),
-                    }
+                configure_track(actor, track, sim_time)
             else:
                 authority[actor_id] = ("replay_pedestrian" if not track.is_vehicle
                                        else "static_recorded")
@@ -193,20 +196,33 @@ def run(args):
     duration = args.duration if args.duration is not None else bundle.duration
     print("CARLA server:", client.get_server_version())
     print("Map:", carla_map.name)
-    print("Ego authority:", authority["ego"])
+    print("Ego authority:", "carla_%s" % ego_mode)
     print("Recorded surrounding vehicles retained:", len(vehicle_tracks))
     print("Moving Traffic Manager vehicles:", len(moving_track_ids))
     if behavior_variant is not None:
-        print("CARLA behavior experiment: %s targets every moving "
-              "surrounding vehicle" % behavior_variant["variant_id"])
+        print("CARLA behavior experiment: %s; scope=%s; %d target(s)" % (
+            behavior_variant["variant_id"], selection["scope"],
+            len(selection["eligible_track_ids"])))
     print("Duration %.2fs at %.3fs/tick" % (duration, args.step_length))
 
     termination_reason = "duration_reached"
+    run_error = None
     try:
+        ego_physics = ego_mode != "replay"
+        ego, ego_offset = spawn_track_actor(
+            world, bundle.ego, projector, "hero", physics=ego_physics)
+        if ego is None:
+            raise RuntimeError("could not spawn ego vehicle")
+        spawned["ego"] = ego
+        offsets["ego"] = ego_offset
+        authority["ego"] = "carla_%s" % ego_mode
+        if ego_mode == "tm":
+            configure_track(ego, bundle.ego, 0.0)
+        collision_monitor = CollisionMonitor(world, ego, metrics, lambda: clock[0])
         while clock[0] <= duration + 1.0e-9:
             sim_time = clock[0]
             spawn_due(sim_time)
-            if args.ego_mode == "replay":
+            if ego_mode == "replay":
                 place_from_point(
                     ego, point_at(bundle.ego, sim_time), projector, ego_offset)
 
@@ -237,6 +253,13 @@ def run(args):
             }
             metrics.update(sim_time, actor_state(ego), others)
             clock[0] += args.step_length
+    except KeyboardInterrupt:
+        termination_reason = "interrupted"
+        raise
+    except Exception as exc:
+        termination_reason = "error"
+        run_error = str(exc)
+        raise
     finally:
         run_metadata = {
             "mode": "traffic_manager",
@@ -246,12 +269,15 @@ def run(args):
             "step_length": args.step_length,
             "duration": duration,
             "termination_reason": termination_reason,
-            "ego_mode": args.ego_mode,
+            "error": run_error,
+            "ego_mode": ego_mode,
             "actor_authority": authority,
             "carla_behavior_variant": {
                 "enabled": behavior_variant is not None,
                 "config": variant_path,
                 "configuration": behavior_variant,
+                "scope": selection.get("scope"),
+                "ego_mode": ego_mode,
                 "eligible_track_ids": (
                     list(selection.get("eligible_track_ids", []))
                     if behavior_variant is not None else []),
@@ -261,28 +287,35 @@ def run(args):
                            set(variant_applied))
                     if behavior_variant is not None else []),
                 "applied": dict(sorted(variant_applied.items())),
+                "all_tm_actor_settings": dict(sorted(tm_behavior_applied.items())),
             },
         }
-        csv_path, summary_path = metrics.write(output, run_metadata)
-        with open(os.path.join(output, "run_config.json"), "w", encoding="utf-8") as stream:
-            json.dump(run_metadata, stream, indent=2, sort_keys=False)
-            stream.write("\n")
-        if collision_monitor:
-            collision_monitor.destroy()
-        for actor in list(spawned.values()):
+        try:
+            csv_path, summary_path = metrics.write(output, run_metadata)
+            with open(os.path.join(output, "run_config.json"), "w", encoding="utf-8") as stream:
+                json.dump(run_metadata, stream, indent=2, sort_keys=False)
+                stream.write("\n")
+            print("Metrics:", csv_path)
+            print("Summary:", summary_path)
+        finally:
             try:
-                if actor.type_id.startswith("vehicle."):
-                    actor.set_autopilot(False, args.tm_port)
-                actor.destroy()
-            except Exception:
-                pass
-        traffic_manager.set_synchronous_mode(False)
-        world.apply_settings(original_settings)
-        print("Metrics:", csv_path)
-        print("Summary:", summary_path)
+                if collision_monitor:
+                    collision_monitor.destroy()
+            finally:
+                for actor in list(spawned.values()):
+                    try:
+                        if actor.type_id.startswith("vehicle."):
+                            actor.set_autopilot(False, args.tm_port)
+                        actor.destroy()
+                    except Exception:
+                        pass
+                try:
+                    traffic_manager.set_synchronous_mode(False)
+                finally:
+                    world.apply_settings(original_settings)
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest",
                         help="scene manifest (optional when --variant-config supplies it)")
@@ -299,7 +332,9 @@ def main():
     parser.add_argument(
         "--seed", type=int,
         help="Traffic Manager seed override; defaults to variant seed or 103")
-    parser.add_argument("--ego-mode", choices=("replay", "tm", "external"), default="replay")
+    parser.add_argument("--ego-mode", choices=("replay", "tm", "external"),
+                        help="defaults to tm for new perturbation configs, "
+                             "otherwise replay")
     parser.add_argument("--max-vehicles", type=int, default=0,
                         help="maximum moving/static surrounding vehicles; 0 means all")
     parser.add_argument(
@@ -319,6 +354,11 @@ def main():
     parser.add_argument("--reuse-world", action="store_true")
     parser.add_argument("--no-rendering", action="store_true")
     parser.add_argument("--output")
+    return parser
+
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
     if not args.manifest and not args.variant_config:
         parser.error("either --manifest or --variant-config is required")

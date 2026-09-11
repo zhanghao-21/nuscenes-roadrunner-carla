@@ -156,16 +156,74 @@ powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\launch_
 The source and target Content Browser paths come from the manifest; they can
 still be overridden with `-SourceLevel` and `-TargetLevel`.
 
-The Unreal script removes only actors whose labels start with `NSRC_`, then
-rebuilds the environment idempotently. Before Unreal starts, the launcher reads
-the same OpenDRIVE `roadMark` records used by CARLA routing and generates a thin
-visual marking mesh (solid, broken, double, white, and yellow). Unreal imports
-that mesh at the map origin, lets the OBJ importer apply the same Y-axis
-conversion used by the RoadRunner FBX, assigns CARLA lane-paint materials, and replaces
-RoadRunner's white `BadDefault` road override with CARLA asphalt on the copied
-level. The generated OBJ/MTL and statistics are under
-`carla_reconstruction\generated\markings`; 2 cm paint elevation avoids
-z-fighting without changing vehicle collision.
+The full Unreal build removes only actors whose labels start with `NSRC_`, then
+rebuilds the environment idempotently. **Visual markings now default to the
+original nuScenes map-expansion divider geometry**, not OpenDRIVE boundaries
+estimated from average lane widths. The generator reads `source.nuscenes_dataroot`
+and `source.meta` from the manifest, subtracts the scene origin, and clips source
+divider edges to the original scene patch. It preserves each node's outgoing-edge
+style (including solid/dashed, white/yellow, double stripes, and zigzags), keeps
+dash phase across source vertices and patch clipping, and removes only exactly
+coincident duplicate edges. Nearby distinct boundaries are not merged.
+
+`NIL`, missing, and unsupported styles are **not painted**. In particular,
+nuScenes `road_divider` records often have geometry but no paint-style metadata;
+they are reported as missing, not assumed to be yellow lines. This is not a
+complete reconstruction of curb, stop-line, crosswalk, or arrow markings.
+The old preparation's synthetic `none -> broken/solid` defaults remain in the
+driving OpenDRIVE file, but are no longer used to paint this visual overlay.
+Road geometry, topology, lane-change permissions, SUMO routes, and TM caches
+are unchanged. Visual and OpenDRIVE lane-invasion semantics may therefore
+differ; this correction is not a driving-network or lane-invasion-model repair.
+
+Unreal imports the mesh at the map origin, verifies its bounds after the OBJ
+importer's Y-axis conversion, and assigns CARLA lane-paint materials. A full
+build also replaces RoadRunner's `BadDefault` road material with CARLA asphalt.
+Generated OBJ/MTL files and the JSON audit are under
+`carla_reconstruction\generated\markings`. Paint is non-colliding and raised
+2 cm above the flat road. Elevated/banked OpenDRIVE maps fail explicitly until
+surface-height projection is implemented.
+
+To update **only the markings on an existing decorated map**, close the CARLA
+server/editor and run this in Anaconda Prompt (CMD):
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\launch_build.ps1 ^
+  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  -MarkingsOnly -AllowCarlaWrite
+```
+
+This backs up the decorated `.umap`, generated marking files, and marking assets
+under `generated\checkpoints`, then replaces only `NSRC_LaneMarkings_*` actors.
+Other actor identities, transforms, and material assignments are checked before
+saving. It does not rebuild buildings/signs or change the imported base map.
+**Do not rerun RoadRunner export, `make import`, or `prepare_sumo.py` for this
+visual-only update.** Restart the usual simulation after the rebuild succeeds.
+If PowerShell selects a different Python, add `-Python "C:\path\to\python.exe"`.
+
+To generate/review the overlay without opening Unreal:
+
+```bat
+python carla_reconstruction\tools\generate_lane_markings.py ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  --output carla_reconstruction\generated\markings\Nusc_singapore_hollandvillage_1094_LaneMarkings.obj
+```
+
+The JSON audit records source hashes, omitted styles, preserved doubles, and
+alignment against the sampled OpenDRIVE driving-lane envelope (25 cm tolerance).
+An alignment warning is not silently fixed by moving source points; inspect the
+reported locations. This check is not an FBX-surface or camera-image validation.
+Dash length/gap (3 m / 6 m), stripe width (0.13 m), and double-stripe centerline
+separation (0.24 m) remain explicit **visual assumptions**, not surveyed sizes.
+Override these with `--dash-length`, `--dash-gap`, `--stripe-width`, and
+`--double-separation` when independently measured values are available.
+Zigzag dimensions are also identified as assumptions in the JSON report.
+
+Missing map data causes an error instead of a silent fallback. Supply
+`--map-json PATH` to the generator, or `-MarkingMapJson PATH` to the launcher,
+to point to the correct map-expansion JSON. A valid patch with no known paint
+styles produces an empty overlay; a markings-only rebuild removes the old
+overlay in that case. Always check its report before applying.
 
 The CARLA-staged OpenDRIVE copy also remaps any junction ID that collides with
 a road ID. CARLA 0.9.15 otherwise interprets that junction successor as an
@@ -174,18 +232,17 @@ OneDrive source XODR is never modified. When the finalizer repairs an existing
 import, it backs up the old XODR and stale Traffic Manager `.bin` files; without
 a cache, Traffic Manager builds its graph from the corrected map on first use.
 
-The nuScenes converter represents each lane as a separate OpenDRIVE road, so
-the two roads beside a shared physical divider can describe the same paint
-twice. The generator removes parallel boundary segments within 0.30 m before
-creating the paint ribbons. In addition, its CARLA visual default renders a
-nuScenes/OpenDRIVE `broken broken` record as one centered dashed stripe: the
-source metadata supplies no surveyed separation, and expanding it with a
-guessed offset looks duplicated in Unreal. This does not modify the OpenDRIVE
-file used for routing. Pass `--preserve-double-dashed` directly to
-`tools\generate_lane_markings.py` when a literal two-stripe visualization is
-required. The generated statistics report
-`duplicate_base_segments_removed`, `double_broken_definitions_collapsed`, and
-`rendered_road_mark_definitions`.
+For comparison or compatibility, explicitly select the old approximation with
+`--source opendrive` in the generator or `-MarkingSource opendrive` in the
+launcher. Only this legacy mode merges nearby boundaries within 0.30 m and
+collapses double-dashed markings by default (`--preserve-double-dashed` keeps
+the pair). The nuScenes source never collapses explicit double styles.
+
+For an exact rollback, close CARLA/Unreal and restore the backed-up decorated
+`.umap` to its original Maps folder and the files in `marking_assets` to the
+map's `Static\Marking\<asset_name>` folder, along with the OBJ/MTL/JSON if desired.
+Restore both the map and the mesh asset: the map references the marking asset
+by path, so restoring the `.umap` alone does not restore the old paint.
 
 Close any CARLA server or Unreal Editor instance that has the target decorated
 map loaded before running the launcher. The script checks the `.umap` lock
@@ -242,7 +299,7 @@ the CARLA 0.9.15 Python environment:
 ```bat
 conda activate carla_0915
 python carla_reconstruction\runtime\replay_persistent.py ^
-  --manifest carla_reconstruction\generated\boston-seaport_scene-0757\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
   --cameras --record
 ```
 
@@ -270,6 +327,10 @@ hybrid pipeline, SUMO controls every classified moving surrounding vehicle,
 CARLA controls the ego, and recorded fixed vehicles remain visible in CARLA. In
 the CARLA-only pipeline, every surrounding vehicle remains in CARLA; Traffic
 Manager controls the movers and fixed/single-observation tracks remain static.
+CARLA-only perturbations now have separate `--target ego` and
+`--target surrounding` experiment families. Both use a Traffic Manager ego and
+Traffic Manager moving surrounding vehicles; only the selected group's behavior
+parameters change, and each family has its own matched baseline.
 The generators create a matched baseline plus deterministic behavior variants,
 without selecting a special critical actor, and both runtimes write safety
 metrics and application audits. SUMO route preparation now matches through internal
