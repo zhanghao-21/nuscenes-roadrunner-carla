@@ -2,6 +2,7 @@
 """Generate separate ego or surrounding Traffic Manager behavior experiments."""
 
 import argparse
+import hashlib
 import os
 import random
 import sys
@@ -13,7 +14,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from carla_reconstruction.closed_loop.safety_variants import (  # noqa: E402
-    CARLA_BEHAVIOR_LIMITS, CARLA_EGO_SCOPE, CARLA_PIPELINE, CARLA_SCOPE,
+    CARLA_AGGRESSION_LIMITS, CARLA_BEHAVIOR_LIMITS, CARLA_EGO_SCOPE, CARLA_PIPELINE, CARLA_SCOPE,
     CARLA_VARIANT_SCHEMA_VERSION, latin_hypercube, load_json, parse_range,
     prune_stale_numbered_variants, validate_carla_variant, validate_range,
     write_json)
@@ -23,13 +24,90 @@ from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
     validated_minimum_track_distance, validated_minimum_two_point_speed)
 
 
-DEFAULT_RANGES = {
+MILD_RANGES = {
     "desired_speed_scale": (0.75, 1.35),
     "leading_distance_m": (0.50, 4.00),
     "random_left_lane_change_percentage": (0.0, 30.0),
     "random_right_lane_change_percentage": (0.0, 30.0),
     "keep_right_rule_percentage": (0.0, 30.0),
+    "target_speed_floor_kmh": (0.0, 0.0),
+    "ignore_vehicles_percentage": (0.0, 0.0),
+    "ignore_lights_percentage": (0.0, 0.0),
+    "ignore_signs_percentage": (0.0, 0.0),
 }
+PROFILE_RANGES = {
+    "mild": MILD_RANGES,
+    "aggressive": {
+        "desired_speed_scale": (1.4, 2.6),
+        "leading_distance_m": (0.2, 0.8),
+        "random_left_lane_change_percentage": (40.0, 80.0),
+        "random_right_lane_change_percentage": (40.0, 80.0),
+        "keep_right_rule_percentage": (0.0, 0.0),
+        "target_speed_floor_kmh": (30.0, 45.0),
+        "ignore_vehicles_percentage": (70.0, 100.0),
+        "ignore_lights_percentage": (80.0, 100.0),
+        "ignore_signs_percentage": (80.0, 100.0),
+    },
+    "stress": {
+        "desired_speed_scale": (2.0, 3.5),
+        "leading_distance_m": (0.0, 0.2),
+        "random_left_lane_change_percentage": (70.0, 100.0),
+        "random_right_lane_change_percentage": (70.0, 100.0),
+        "keep_right_rule_percentage": (0.0, 0.0),
+        "target_speed_floor_kmh": (45.0, 65.0),
+        "ignore_vehicles_percentage": (100.0, 100.0),
+        "ignore_lights_percentage": (100.0, 100.0),
+        "ignore_signs_percentage": (100.0, 100.0),
+    },
+}
+PROFILE_SPEED_CEILINGS = {"mild": 0.0, "aggressive": 80.0, "stress": 100.0}
+DEFAULT_RANGES = PROFILE_RANGES["aggressive"]
+RANGE_OPTIONS = {
+    "desired_speed_scale": "desired_speed_scale",
+    "leading_distance_m": "leading_distance",
+    "random_left_lane_change_percentage": "random_left_lane_change",
+    "random_right_lane_change_percentage": "random_right_lane_change",
+    "keep_right_rule_percentage": "keep_right",
+    "target_speed_floor_kmh": "target_speed_floor",
+    "ignore_vehicles_percentage": "ignore_vehicles",
+    "ignore_lights_percentage": "ignore_lights",
+    "ignore_signs_percentage": "ignore_signs",
+}
+
+
+def resolve_sampling(args):
+    profile = getattr(args, "profile", "aggressive")
+    if profile not in PROFILE_RANGES:
+        raise ValueError("unknown CARLA aggression profile")
+    limits = dict(CARLA_BEHAVIOR_LIMITS, **CARLA_AGGRESSION_LIMITS)
+    bounds = []
+    for key, option in RANGE_OPTIONS.items():
+        override = getattr(args, option, None)
+        value = PROFILE_RANGES[profile][key] if override is None else override
+        bounds.append((key, validate_range(key, value, limits[key])))
+    ceiling = getattr(args, "maximum_speed_kmh", None)
+    ceiling = PROFILE_SPEED_CEILINGS[profile] if ceiling is None else ceiling
+    ceiling = validate_range("maximum speed", (ceiling, ceiling),
+                             CARLA_AGGRESSION_LIMITS["target_speed_ceiling_kmh"])[0]
+    if ceiling and dict(bounds)["target_speed_floor_kmh"][1] > ceiling:
+        raise ValueError("target speed floor range cannot exceed --maximum-speed-kmh")
+    return profile, bounds, ceiling
+
+
+def sampled_actor_behaviors(count, bounds, seed, eligible_ids, profile, ceiling):
+    """Separate reproducible speed/compliance variation for each selected driver.
+
+    Mild keeps the previous homogeneous sampling. Aggressive/stress use stable
+    per-track seeds so targets do not all accelerate/change lanes identically.
+    """
+    columns = {}
+    for actor_id in eligible_ids:
+        actor_seed = seed if profile == "mild" else int.from_bytes(
+            hashlib.sha256((str(seed) + ":" + actor_id).encode("utf-8")).digest()[:8], "big")
+        columns[actor_id] = latin_hypercube(count, bounds, random.Random(actor_seed))
+    return [{actor_id: dict({key: _round(value) for key, value in columns[actor_id][number].items()},
+                           auto_lane_change=True, target_speed_ceiling_kmh=ceiling)
+             for actor_id in eligible_ids} for number in range(count)]
 
 
 def _round(value):
@@ -39,12 +117,14 @@ def _round(value):
 def _variant_document(
         manifest_path, variant_id, kind, generation_seed, simulation_seed,
         minimum_track_distance, minimum_two_point_speed, eligible_ids,
-        retained_vehicle_ids, behavior, target, moving_ids, baseline_behavior):
+        retained_vehicle_ids, behavior, target, moving_ids, baseline_behavior,
+        profile, actor_behaviors):
     document = {
         "schema_version": CARLA_VARIANT_SCHEMA_VERSION,
         "pipeline": CARLA_PIPELINE,
         "variant_id": variant_id,
         "kind": kind,
+        "aggression_profile": profile,
         "manifest": manifest_path,
         "simulation_seed": int(simulation_seed),
         "ego_mode": "tm",
@@ -57,6 +137,7 @@ def _variant_document(
             "retained_vehicle_track_ids": list(retained_vehicle_ids),
         },
         "behavior": behavior,
+        "actor_behaviors": actor_behaviors,
         "baseline_behavior": baseline_behavior,
         "scenario": {
             "name": variant_id,
@@ -65,6 +146,9 @@ def _variant_document(
             "generation_seed": int(generation_seed),
             "perturbation_target": target,
             "parameters": behavior,
+            "parameters_describe": "first selected actor; actor_behaviors contains every target",
+            "aggression_profile": profile,
+            "sampling": "shared" if profile == "mild" else "independent_per_track",
         },
     }
     return validate_carla_variant(document)
@@ -79,12 +163,13 @@ def _validate_output_scope(output_dir, baseline):
         existing = load_json(path)
         if (existing.get("pipeline") != CARLA_PIPELINE or
                 existing.get("schema_version") != CARLA_VARIANT_SCHEMA_VERSION or
+                existing.get("aggression_profile") != baseline.get("aggression_profile") or
                 existing.get("selection", {}).get("scope") !=
                 baseline["selection"]["scope"] or
                 os.path.normcase(os.path.abspath(existing.get("manifest", ""))) !=
                 os.path.normcase(baseline["manifest"])):
             raise ValueError(
-                "output contains a different scene, target, or legacy experiment; "
+                "output contains a different scene, target, profile, or legacy experiment; "
                 "choose a separate --output directory: %s" % output_dir)
 
 
@@ -125,29 +210,10 @@ def run(args):
         raise ValueError("ego perturbations require an ego path with at least two points")
     eligible_ids = ["ego"] if target == "ego" else moving_ids
 
+    profile, bounds, ceiling = resolve_sampling(args)
     output_dir = os.path.abspath(args.output or os.path.join(
-        os.path.dirname(manifest_path), "carla_safety_variants", target))
-    bounds = [
-        ("desired_speed_scale", validate_range(
-            "desired speed scale", args.desired_speed_scale,
-            CARLA_BEHAVIOR_LIMITS["desired_speed_scale"])),
-        ("leading_distance_m", validate_range(
-            "leading distance", args.leading_distance,
-            CARLA_BEHAVIOR_LIMITS["leading_distance_m"])),
-        ("random_left_lane_change_percentage", validate_range(
-            "left lane-change percentage", args.random_left_lane_change,
-            CARLA_BEHAVIOR_LIMITS[
-                "random_left_lane_change_percentage"])),
-        ("random_right_lane_change_percentage", validate_range(
-            "right lane-change percentage", args.random_right_lane_change,
-            CARLA_BEHAVIOR_LIMITS[
-                "random_right_lane_change_percentage"])),
-        ("keep_right_rule_percentage", validate_range(
-            "keep-right percentage", args.keep_right,
-            CARLA_BEHAVIOR_LIMITS["keep_right_rule_percentage"])),
-    ]
-    samples = latin_hypercube(
-        args.count, bounds, random.Random(args.seed))
+        os.path.dirname(manifest_path), "carla_safety_variants", target, profile))
+    samples = sampled_actor_behaviors(args.count, bounds, args.seed, eligible_ids, profile, ceiling)
 
     baseline_behavior = {
         "desired_speed_scale": 1.0,
@@ -156,34 +222,27 @@ def run(args):
         "random_left_lane_change_percentage": 0.0,
         "random_right_lane_change_percentage": 0.0,
         "keep_right_rule_percentage": 0.0,
+        "target_speed_floor_kmh": 0.0,
+        "target_speed_ceiling_kmh": 0.0,
+        "ignore_vehicles_percentage": 0.0,
+        "ignore_lights_percentage": 0.0,
+        "ignore_signs_percentage": 0.0,
     }
     baseline = _variant_document(
         manifest_path, "carla_tm_%s_baseline" % target, "baseline", args.seed,
         args.simulation_seed, minimum_track_distance,
         minimum_two_point_speed, eligible_ids, retained_vehicle_ids,
-        baseline_behavior, target, moving_ids, baseline_behavior)
+        baseline_behavior, target, moving_ids, baseline_behavior,
+        profile, {actor_id: dict(baseline_behavior) for actor_id in eligible_ids})
     prepared_variants = []
-    for number, sample in enumerate(samples):
-        behavior = {key: _round(value) for key, value in sample.items()}
-        behavior["auto_lane_change"] = True
-        # Preserve a stable, reader-friendly order in generated JSON.
-        behavior = {
-            "desired_speed_scale": behavior["desired_speed_scale"],
-            "leading_distance_m": behavior["leading_distance_m"],
-            "auto_lane_change": behavior["auto_lane_change"],
-            "random_left_lane_change_percentage": behavior[
-                "random_left_lane_change_percentage"],
-            "random_right_lane_change_percentage": behavior[
-                "random_right_lane_change_percentage"],
-            "keep_right_rule_percentage": behavior[
-                "keep_right_rule_percentage"],
-        }
+    for number, actor_behaviors in enumerate(samples):
+        behavior = actor_behaviors[eligible_ids[0]]
         variant_id = "carla_tm_%s_%03d" % (target, number)
         document = _variant_document(
             manifest_path, variant_id, "sample", args.seed,
             args.simulation_seed, minimum_track_distance,
             minimum_two_point_speed, eligible_ids, retained_vehicle_ids,
-            behavior, target, moving_ids, baseline_behavior)
+            behavior, target, moving_ids, baseline_behavior, profile, actor_behaviors)
         prepared_variants.append((
             number, variant_id, behavior, document))
     _validate_output_scope(output_dir, baseline)
@@ -197,6 +256,10 @@ def run(args):
     index = {
         "schema_version": CARLA_VARIANT_SCHEMA_VERSION,
         "pipeline": CARLA_PIPELINE,
+        "aggression_profile": profile,
+        "parameter_ranges": dict(bounds),
+        "target_speed_ceiling_kmh": ceiling,
+        "sampling": "shared" if profile == "mild" else "independent_per_track",
         "manifest": manifest_path,
         "scene": manifest.get("scene"),
         "generation_seed": int(args.seed),
@@ -225,12 +288,17 @@ def run(args):
             "variant_id": variant_id,
             "config": path,
             "behavior": behavior,
+            "actor_behaviors": document["actor_behaviors"],
         })
     index_path = os.path.abspath(os.path.join(output_dir, "index.json"))
     write_json(index_path, index)
     print("Generated matched CARLA %s baseline and %d variants in %s" %
           (target, args.count, output_dir))
     print("Perturbation targets:", len(eligible_ids), "(" + target + ")")
+    print("Aggression profile:", profile, "(collision physics remains enabled)")
+    if any(dict(bounds)[key][1] > 0 for key in (
+            "ignore_vehicles_percentage", "ignore_lights_percentage", "ignore_signs_percentage")):
+        print("Selected drivers intentionally bypass some TM hazard/rule checks; collisions are possible, not guaranteed.")
     print("Moving CARLA Traffic Manager vehicles per experiment:",
           len(moving_ids))
     print("Fixed CARLA vehicles retained:",
@@ -247,6 +315,8 @@ def build_parser():
         help="perturb only the ego or all moving surrounding vehicles; "
              "both groups use Traffic Manager in every experiment")
     parser.add_argument("--count", type=int, default=20)
+    parser.add_argument("--profile", choices=tuple(PROFILE_RANGES), default="aggressive",
+                        help="aggressive (default), stress (100%% vehicle/rule ignore), or old mild ranges")
     parser.add_argument("--seed", type=int, default=103,
                         help="Latin-hypercube sampling seed")
     parser.add_argument("--simulation-seed", type=int, default=103,
@@ -257,27 +327,14 @@ def build_parser():
     parser.add_argument(
         "--minimum-two-point-speed", type=float,
         default=DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS)
-    parser.add_argument("--desired-speed-scale", type=parse_range,
-                        default=DEFAULT_RANGES["desired_speed_scale"],
-                        metavar="MIN,MAX")
-    parser.add_argument("--leading-distance", type=parse_range,
-                        default=DEFAULT_RANGES["leading_distance_m"],
-                        metavar="MIN,MAX")
-    parser.add_argument("--random-left-lane-change", type=parse_range,
-                        default=DEFAULT_RANGES[
-                            "random_left_lane_change_percentage"],
-                        metavar="MIN,MAX")
-    parser.add_argument("--random-right-lane-change", type=parse_range,
-                        default=DEFAULT_RANGES[
-                            "random_right_lane_change_percentage"],
-                        metavar="MIN,MAX")
-    parser.add_argument("--keep-right", type=parse_range,
-                        default=DEFAULT_RANGES[
-                            "keep_right_rule_percentage"],
-                        metavar="MIN,MAX")
+    for key, option in RANGE_OPTIONS.items():
+        parser.add_argument("--" + option.replace("_", "-"), type=parse_range, default=None,
+                            metavar="MIN,MAX", help="override profile range for " + key)
+    parser.add_argument("--maximum-speed-kmh", type=float, default=None,
+                        help="target-speed ceiling: mild=0 (off), aggressive=80, stress=100")
     parser.add_argument("--baseline-leading-distance", type=float, default=2.5)
     parser.add_argument("--output", help="exact output folder; default: "
-                        "<scene>/carla_safety_variants/<target>")
+                        "<scene>/carla_safety_variants/<target>/<profile>")
     return parser
 
 

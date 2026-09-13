@@ -1,7 +1,7 @@
 """Optional HGT trajectory prediction and prediction-based inverse TTC.
 
 This module is deliberately independent of CARLA and SUMO at import time.  The
-hybrid runner feeds it plain actor-state dictionaries after each synchronized
+closed-loop runners feed it plain actor-state dictionaries after each synchronized
 tick.  Heavy model and GUI dependencies are imported only when this optional
 feature is enabled.
 """
@@ -313,7 +313,7 @@ class PredictionRiskMonitor(object):
             "prediction_risk.sample_step_s")
         if abs(self.step_length - sample_step_s) > 1.0e-9:
             raise ValueError(
-                "HGT prediction expects %.6f s samples, but the hybrid runner "
+                "HGT prediction expects %.6f s samples, but the simulation runner "
                 "uses %.6f s; regenerate/resample for the model cadence or "
                 "disable prediction risk" % (sample_step_s, self.step_length))
         self.sample_step_s = sample_step_s

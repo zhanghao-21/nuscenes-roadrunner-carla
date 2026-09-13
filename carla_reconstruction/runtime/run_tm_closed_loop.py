@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 import carla
 
@@ -23,6 +24,14 @@ from carla_reconstruction.closed_loop.safety_variants import (  # noqa: E402
 from carla_reconstruction.closed_loop.tracks import (  # noqa: E402
     DEFAULT_MINIMUM_TRACK_DISTANCE_M, DEFAULT_MINIMUM_TWO_POINT_SPEED_MPS,
     classify_vehicle_motion, load_manifest_tracks, point_at)
+from carla_reconstruction.scene_overrides.tm_ego_route_0103 import (  # noqa: E402
+    prepare_ego_route)
+from carla_reconstruction.closed_loop.carla_prediction import (  # noqa: E402
+    CarlaPredictionObserver, add_prediction_arguments)
+from carla_reconstruction.closed_loop.environment_scenarios import (  # noqa: E402
+    EnvironmentScenario, add_environment_arguments, validate_environment_arguments)
+from carla_reconstruction.visualization.tm_capture import (  # noqa: E402
+    TMSensorCapture, add_capture_arguments, capture_enabled, validate_capture_arguments)
 
 
 def _resolve_ego_mode(requested, variant):
@@ -35,11 +44,14 @@ def _resolve_ego_mode(requested, variant):
 
 
 def run(args):
+    validate_environment_arguments(args)
     variant_path = getattr(args, "variant_config", None)
     variant_path = os.path.abspath(variant_path) if variant_path else None
     behavior_variant = (
         load_carla_variant(variant_path) if variant_path else None)
     ego_mode = _resolve_ego_mode(getattr(args, "ego_mode", None), behavior_variant)
+    if capture_enabled(args) and ego_mode != "tm":
+        raise ValueError("TM sensor visualization requires --ego-mode tm")
     requested_manifest = getattr(args, "manifest", None)
     if requested_manifest:
         requested_manifest = os.path.abspath(requested_manifest)
@@ -78,6 +90,8 @@ def run(args):
     map_name = args.map or manifest["map"]["runtime_name"]
     output = os.path.abspath(args.output) if args.output else default_run_output(
         REPO_ROOT, manifest["scene"], "tm")
+    duration = args.duration if args.duration is not None else bundle.duration
+    validate_capture_arguments(args, output, duration)
 
     # Resolve and validate the complete experiment population before touching
     # the CARLA world. This keeps invalid variant/CLI combinations side-effect
@@ -117,10 +131,19 @@ def run(args):
                           if not track.is_vehicle]
                          if args.replay_pedestrians else [])
 
+    prediction_observer = CarlaPredictionObserver(
+        args, manifest_path, moving_track_ids,
+        sorted({track.actor_id for track in vehicle_tracks} - set(moving_track_ids)))
+
     client = carla.Client(args.host, args.port)
     client.set_timeout(args.timeout)
     world = client.get_world() if args.reuse_world else client.load_world(map_name)
     carla_map = world.get_map()
+    # A scene-local exception, validated against the actual loaded map before
+    # changing world settings or spawning actors. Other scenes/modes are no-ops.
+    ego_route = prepare_ego_route(
+        manifest, bundle.ego, carla_map, ego_mode,
+        disabled=getattr(args, "disable_0103_ego_route", False))
     projector = GroundProjector(carla_map)
     original_settings = world.get_settings()
     settings = world.get_settings()
@@ -144,6 +167,8 @@ def run(args):
     metrics = SafetyMetrics()
     clock = [0.0]
     collision_monitor = None
+    environment = EnvironmentScenario(args, world)
+    sensor_capture = None
     spectator = world.get_spectator()
 
     def configure_track(actor, track, sim_time):
@@ -193,7 +218,6 @@ def run(args):
                 authority[actor_id] = ("replay_pedestrian" if not track.is_vehicle
                                        else "static_recorded")
 
-    duration = args.duration if args.duration is not None else bundle.duration
     print("CARLA server:", client.get_server_version())
     print("Map:", carla_map.name)
     print("Ego authority:", "carla_%s" % ego_mode)
@@ -203,11 +227,20 @@ def run(args):
         print("CARLA behavior experiment: %s; scope=%s; %d target(s)" % (
             behavior_variant["variant_id"], selection["scope"],
             len(selection["eligible_track_ids"])))
+        print("Perturbation profile: %s; kind=%s" % (
+            behavior_variant.get("aggression_profile", "legacy"), behavior_variant.get("kind", "legacy")))
+        if behavior_variant.get("kind") == "sample" and any(
+                (carla_behavior_for_track(behavior_variant, actor_id) or {}).get(key, 0.0) > 0.0
+                for actor_id in selection["eligible_track_ids"]
+                for key in ("ignore_vehicles_percentage", "ignore_lights_percentage", "ignore_signs_percentage")):
+            print("Selected drivers intentionally relax TM vehicle/rule checks; physical collisions remain enabled.")
     print("Duration %.2fs at %.3fs/tick" % (duration, args.step_length))
 
     termination_reason = "duration_reached"
     run_error = None
+    capture_close_error = None
     try:
+        environment.apply_weather()
         ego_physics = ego_mode != "replay"
         ego, ego_offset = spawn_track_actor(
             world, bundle.ego, projector, "hero", physics=ego_physics)
@@ -218,8 +251,30 @@ def run(args):
         authority["ego"] = "carla_%s" % ego_mode
         if ego_mode == "tm":
             configure_track(ego, bundle.ego, 0.0)
+            if ego_route is not None:
+                # Replace only route coordinates once, before the first tick.
+                # Keep all baseline/variant speed and safety settings intact.
+                traffic_manager.set_path(ego, list(ego_route.locations), True)
+                ego_route.metadata["applied"] = True
+                print("Ego route correction:", ego_route.metadata["override_id"])
         collision_monitor = CollisionMonitor(world, ego, metrics, lambda: clock[0])
+        # Retain the recorded population before adding a synthetic road obstacle.
+        if getattr(args, "obstacle_distance", None) is not None:
+            spawn_due(0.0)
+            first = bundle.ego.points[0]
+            obstacle = environment.spawn_obstacle(
+                carla.Location(x=first.x, y=-first.y, z=projector.z(first.x, -first.y)),
+                carla_map)
+            spawned["scenario_obstacle"] = obstacle
+            authority["scenario_obstacle"] = "synthetic_static_obstacle"
+            print("Lane obstacle:", environment.metadata["obstacle"])
+        if capture_enabled(args):
+            sensor_capture = TMSensorCapture(
+                args, manifest, manifest_path, output, duration, environment)
+            sensor_capture.start(world, ego)
+        prediction_observer.start(args.step_length)
         while clock[0] <= duration + 1.0e-9:
+            wall_start = time.monotonic()
             sim_time = clock[0]
             spawn_due(sim_time)
             if ego_mode == "replay":
@@ -240,7 +295,7 @@ def run(args):
                     del spawned[actor_id]
                     del live_tracks[actor_id]
 
-            world.tick()
+            frame_id = world.tick()
             if not ego.is_alive:
                 termination_reason = "ego_destroyed"
                 print("WARNING: ego actor was destroyed; ending this run")
@@ -251,8 +306,16 @@ def run(args):
                 for actor_id, actor in spawned.items()
                 if actor_id != "ego" and actor.is_alive
             }
-            metrics.update(sim_time, actor_state(ego), others)
+            ego_state = actor_state(ego)
+            if sensor_capture is not None:
+                sensor_capture.observe(frame_id, sim_time + args.step_length, ego, world)
+            metrics.update(sim_time, ego_state, others)
+            prediction_observer.observe(
+                sim_time, ego_state, others, ego, spawned, world)
             clock[0] += args.step_length
+            prediction_observer.pace(wall_start)
+        if sensor_capture is not None and termination_reason == "duration_reached":
+            sensor_capture.finish()
     except KeyboardInterrupt:
         termination_reason = "interrupted"
         raise
@@ -261,6 +324,17 @@ def run(args):
         run_error = str(exc)
         raise
     finally:
+        prediction_observer.close()
+        if sensor_capture is not None:
+            try:
+                sensor_capture.close(termination_reason, run_error)
+            except Exception as exc:
+                # A failed sensor/index cleanup must not bypass vehicle,
+                # Traffic Manager, weather, or synchronous-world cleanup.
+                capture_close_error = exc
+                sensor_capture.audit["complete"] = False
+                termination_reason = "error"
+                run_error = run_error or str(exc)
         run_metadata = {
             "mode": "traffic_manager",
             "manifest": manifest_path,
@@ -271,7 +345,14 @@ def run(args):
             "termination_reason": termination_reason,
             "error": run_error,
             "ego_mode": ego_mode,
+            "scene_ego_route": ego_route.metadata if ego_route is not None else None,
+            "prediction_risk": prediction_observer.metadata(),
             "actor_authority": authority,
+            "environment_scenario": environment.metadata,
+            "sensor_capture": ({"index": str(sensor_capture.root / "capture_index.json"),
+                                "complete": sensor_capture.audit["complete"],
+                                "frame_count": len(sensor_capture.audit["frames"])}
+                               if sensor_capture is not None else None),
             "carla_behavior_variant": {
                 "enabled": behavior_variant is not None,
                 "config": variant_path,
@@ -312,7 +393,16 @@ def run(args):
                 try:
                     traffic_manager.set_synchronous_mode(False)
                 finally:
-                    world.apply_settings(original_settings)
+                    try:
+                        environment.close()
+                    finally:
+                        world.apply_settings(original_settings)
+
+    if capture_close_error is not None:
+        raise RuntimeError("sensor capture cleanup failed") from capture_close_error
+    if getattr(args, "build_sim_panels", False):
+        from carla_reconstruction.visualization.sim_panels import build_sim_panels
+        build_sim_panels(os.path.join(output, "capture"), os.path.join(output, "sim_panels"))
 
 
 def build_parser():
@@ -335,6 +425,10 @@ def build_parser():
     parser.add_argument("--ego-mode", choices=("replay", "tm", "external"),
                         help="defaults to tm for new perturbation configs, "
                              "otherwise replay")
+    parser.add_argument(
+        "--disable-0103-ego-route", action="store_true",
+        help="disable the scene-0103-only TM ego exit-lane correction "
+             "and use the original raw recorded path (diagnostic rollback)")
     parser.add_argument("--max-vehicles", type=int, default=0,
                         help="maximum moving/static surrounding vehicles; 0 means all")
     parser.add_argument(
@@ -354,6 +448,9 @@ def build_parser():
     parser.add_argument("--reuse-world", action="store_true")
     parser.add_argument("--no-rendering", action="store_true")
     parser.add_argument("--output")
+    add_prediction_arguments(parser)
+    add_environment_arguments(parser)
+    add_capture_arguments(parser)
     return parser
 
 

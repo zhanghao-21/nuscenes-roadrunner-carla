@@ -87,7 +87,7 @@ MATLAB, then paste the following example for scene-1094:
 ```matlab
 addpath("D:\nuscenes-roadrunner-carla\carla_reconstruction");
 
-manifest = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json";
+manifest = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\singapore-onenorth_scene-0061\scene_manifest.json";
 project = "D:\nuscenes-roadrunner-carla\nuscenes_test1";
 out = "D:\nuscenes-roadrunner-carla\carla_reconstruction\generated\fbx";
 fbx = export_roadrunner_base(manifest, project, out);
@@ -122,8 +122,8 @@ scene-1094:
 
 ```bat
 python carla_reconstruction\tools\prepare_import_package.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
-  --fbx carla_reconstruction\generated\fbx\Nusc_singapore_hollandvillage_1094.fbx ^
+  --manifest carla_reconstruction\generated\singapore-onenorth_scene-0061\scene_manifest.json ^
+  --fbx carla_reconstruction\generated\fbx\Nusc_singapore_hollandvillage_1100.fbx ^
   --output-root carla_reconstruction\generated\import
 ```
 
@@ -149,7 +149,7 @@ preserved.
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\launch_build.ps1 ^
-  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  -Manifest carla_reconstruction\generated\singapore-onenorth_scene-0061\scene_manifest.json ^
   -AllowCarlaWrite
 ```
 
@@ -205,8 +205,8 @@ To generate/review the overlay without opening Unreal:
 
 ```bat
 python carla_reconstruction\tools\generate_lane_markings.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
-  --output carla_reconstruction\generated\markings\Nusc_singapore_hollandvillage_1094_LaneMarkings.obj
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1077\scene_manifest.json ^
+  --output carla_reconstruction\generated\markings\Nusc_singapore_hollandvillage_1077_LaneMarkings.obj
 ```
 
 The JSON audit records source hashes, omitted styles, preserved doubles, and
@@ -260,7 +260,7 @@ same-named OpenDRIVE file in the imported package:
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\finalize_decorated_map.ps1 ^
-  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1077\scene_manifest.json ^
   -AllowCarlaWrite
 ```
 
@@ -299,7 +299,7 @@ the CARLA 0.9.15 Python environment:
 ```bat
 conda activate carla_0915
 python carla_reconstruction\runtime\replay_persistent.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0553\scene_manifest.json ^
   --cameras --record
 ```
 
@@ -310,14 +310,60 @@ draws history/future trails, and can save the approximate six-camera rig and a
 chase camera. By default, frames use the existing visualization layout under
 `replay_geo/results/<scene>/carla_cams` and `carla_frames`.
 
-The existing real/sim/top-down panel and GIF tools can consume them directly:
+### 5.1. Aligned REAL/SIM reconstruction comparison (new pipeline)
+
+Use the following manifest-based tools for the layouts previously produced by
+`nuscenes2xodr/build_aligned_topdown.py` and `build_aligned_full.py`. They capture
+the **imported Decorated map**, not a new bare OpenDRIVE world, and work with
+any prepared scene whose map has been imported. The capture is separate from
+`replay_persistent.py`; its indexed images are not interchangeable with legacy
+replay folders or GIFs.
+
+Run these commands in **Anaconda Prompt**, from the repository root. Start
+CARLA first (press **Play** if using Unreal Editor), and stop any other replay,
+Traffic Manager or SUMO controller before capturing:
 
 ```bat
-set "NUSCENES_RR_OUTPUT=%RR%"
-set "NUSCENES_DATAROOT=D:\OneDrive - Texas A&M University\Wu, Keshu's files - nuscenes_1\v1.0-mini"
-python replay_geo\build_aligned_geo.py --scene 0103
-python replay_geo\make_gifs.py --scene 0103
+conda activate carla_0915
+python -m pip install -r carla_reconstruction\requirements-visualization.txt
+
+python carla_reconstruction\runtime\capture_reconstruction.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json
+
+python carla_reconstruction\tools\build_aligned_topdown.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json
+
+python carla_reconstruction\tools\build_aligned_full.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json
 ```
+
+The first command loads the manifest's map and captures six cameras plus LiDAR
+at every recorded keyframe, including the final one. It temporarily takes over
+the simulation; it does **not** edit or reimport map assets. The two builders
+run offline afterward:
+
+- `build_aligned_topdown.py`: REAL/SIM six-camera comparison + schematic top-down.
+- `build_aligned_full.py`: the same, with REAL/SIM LiDAR panels in the middle.
+
+Outputs are under
+`carla_reconstruction/generated/visualizations/boston-seaport_scene-0103/`:
+`capture/`, `aligned_topdown/` and `aligned_full/`. Each aligned folder contains
+`aligned.gif`, individual `frames/*.png`, and an alignment audit `panel_index.json`.
+Open the PNGs for full-resolution slide images and the GIF for animation.
+
+For another scene, replace the manifest path, or use `--scene 0553` on each
+command. `--scene all` processes all prepared manifests (every corresponding
+map must already be imported for capture). Source images and point clouds are
+read from `source.nuscenes_dataroot` in the manifest; `--dataroot` overrides that
+location when the dataset has moved.
+
+This comparison is **recorded-pose replay**, not a TM/SUMO closed-loop run or
+HGT risk visualization. The camera rig is approximate; the top-down view shows
+lane areas, environment objects and actor poses, not the actual painted lane
+markings. GIF playback follows the source timestamps unless `--fps` is set.
+Existing nonempty output folders are never overwritten: use a new `--output`
+for another capture and pass that folder to the builders with `--capture-dir`.
+See [visualization options and repeat-run examples](visualization/README.md).
 
 ## 6. Interactive traffic and safety-critical variants
 
@@ -331,6 +377,29 @@ CARLA-only perturbations now have separate `--target ego` and
 `--target surrounding` experiment families. Both use a Traffic Manager ego and
 Traffic Manager moving surrounding vehicles; only the selected group's behavior
 parameters change, and each family has its own matched baseline.
+The CARLA-only generator now defaults to `--profile aggressive`; use
+`--profile stress` for 100% selected-driver vehicle/light/sign hazard-ignore
+settings, or `--profile mild` for the previous mild ranges. Stronger profiles
+use higher speed targets, shorter following gaps and per-driver variation.
+Physical collisions remain enabled and matched baselines are unchanged. New
+files are saved under `carla_safety_variants/<target>/<profile>/`, preserving
+old generated variants. Regenerate and run the new profile-folder config;
+old files do not become aggressive automatically. See
+[generation commands and parameter ranges](closed_loop/README.md#6-generate-separate-carla-only-ego-and-surrounding-perturbations).
+For scene 0103 on its matching Decorated map, the CARLA-only TM ego automatically
+uses a [scene-specific intersection route correction](scene_overrides/README.md#scene-0103-traffic-manager-ego-intersection-route)
+to avoid a wrong-turn/blocked-exit stop. The existing run command is unchanged;
+no map or SUMO rebuild is required, and surrounding behavior, safety checks,
+other scenes, and the hybrid runtime are unaffected.
+
+The CARLA-only closed-loop runner also supports the same optional HGT
+prediction-risk display as the hybrid: add `--prediction-risk --draw-predictions`
+to show the inverse-TTC dashboard and predicted trajectories, or
+`--no-prediction-risk` to disable both. Dashboard and trajectory drawing can be
+toggled independently; only recorded moving surrounding vehicles are included.
+No SUMO preparation is needed. See
+[CARLA-only HGT options and examples](closed_loop/README.md#optional-carla-only-hgt-prediction-and-dashboard).
+
 The generators create a matched baseline plus deterministic behavior variants,
 without selecting a special critical actor, and both runtimes write safety
 metrics and application audits. SUMO route preparation now matches through internal

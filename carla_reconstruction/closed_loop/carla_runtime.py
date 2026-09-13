@@ -92,13 +92,20 @@ def configure_tm_actor(traffic_manager, actor, track, tm_port,
     traffic_manager.auto_lane_change(actor, effective_auto_lane_change)
     traffic_manager.distance_to_leading_vehicle(
         actor, effective_leading_distance)
-    traffic_manager.ignore_vehicles_percentage(actor, 0.0)
+    ignore_vehicles = float(behavior.get("ignore_vehicles_percentage", 0.0))
+    ignore_lights = float(behavior.get("ignore_lights_percentage", 0.0))
+    ignore_signs = float(behavior.get("ignore_signs_percentage", 0.0))
+    traffic_manager.ignore_vehicles_percentage(actor, ignore_vehicles)
     traffic_manager.ignore_walkers_percentage(actor, 0.0)
-    traffic_manager.ignore_lights_percentage(actor, 0.0)
-    traffic_manager.ignore_signs_percentage(actor, 0.0)
+    traffic_manager.ignore_lights_percentage(actor, ignore_lights)
+    traffic_manager.ignore_signs_percentage(actor, ignore_signs)
+    speed_floor = float(behavior.get("target_speed_floor_kmh", 0.0))
+    speed_ceiling = float(behavior.get("target_speed_ceiling_kmh", 0.0))
     desired_speed = max(
-        float(minimum_speed_kmh),
+        float(minimum_speed_kmh), speed_floor,
         track.mean_speed * 3.6 * desired_speed_scale)
+    if speed_ceiling > 0.0:
+        desired_speed = min(desired_speed, speed_ceiling)
     traffic_manager.set_desired_speed(actor, desired_speed)
     if behavior_variant is not None:
         traffic_manager.random_left_lanechange_percentage(
@@ -114,6 +121,13 @@ def configure_tm_actor(traffic_manager, actor, track, tm_port,
     return {
         "desired_speed_kmh": desired_speed,
         "desired_speed_scale": desired_speed_scale,
+        "recorded_mean_speed_kmh": track.mean_speed * 3.6,
+        "target_speed_floor_kmh": speed_floor,
+        "target_speed_ceiling_kmh": speed_ceiling,
+        "ignore_vehicles_percentage": ignore_vehicles,
+        "ignore_walkers_percentage": 0.0,
+        "ignore_lights_percentage": ignore_lights,
+        "ignore_signs_percentage": ignore_signs,
         "leading_distance_m": effective_leading_distance,
         "auto_lane_change": effective_auto_lane_change,
         "random_left_lane_change_percentage": float(behavior.get(

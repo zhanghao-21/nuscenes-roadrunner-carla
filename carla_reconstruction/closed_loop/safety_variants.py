@@ -14,7 +14,7 @@ import re
 
 
 VARIANT_SCHEMA_VERSION = 1
-CARLA_VARIANT_SCHEMA_VERSION = 2
+CARLA_VARIANT_SCHEMA_VERSION = 3
 SUMO_PIPELINE = "sumo_hybrid"
 CARLA_PIPELINE = "carla_tm"
 SUMO_SCOPE = "all_moving_background"
@@ -39,11 +39,18 @@ SUMO_LANE_CHANGE_LIMITS = {
     "lc_assertive": (0.5, 3.0),
 }
 CARLA_BEHAVIOR_LIMITS = {
-    "desired_speed_scale": (0.25, 2.0),
-    "leading_distance_m": (0.25, 20.0),
+    "desired_speed_scale": (0.25, 4.0),
+    "leading_distance_m": (0.0, 20.0),
     "random_left_lane_change_percentage": (0.0, 100.0),
     "random_right_lane_change_percentage": (0.0, 100.0),
     "keep_right_rule_percentage": (0.0, 100.0),
+}
+CARLA_AGGRESSION_LIMITS = {
+    "target_speed_floor_kmh": (0.0, 100.0),
+    "target_speed_ceiling_kmh": (0.0, 140.0),
+    "ignore_vehicles_percentage": (0.0, 100.0),
+    "ignore_lights_percentage": (0.0, 100.0),
+    "ignore_signs_percentage": (0.0, 100.0),
 }
 
 
@@ -264,15 +271,27 @@ def validate_sumo_variant(document, expected_sumo_ids=None):
     return normalized
 
 
-def _validate_carla_behavior(behavior, label="behavior"):
+def _validate_carla_behavior(behavior, label="behavior", extended=False):
     if not isinstance(behavior, dict):
         raise ValueError("CARLA variant requires %s parameters" % label)
+    if extended:
+        unknown = set(behavior) - (set(CARLA_BEHAVIOR_LIMITS) | set(CARLA_AGGRESSION_LIMITS) | {"auto_lane_change"})
+        if unknown:
+            raise ValueError(label + " has unsupported settings: " + ", ".join(sorted(unknown)))
     auto_lane_change = behavior.get("auto_lane_change")
     if not isinstance(auto_lane_change, bool):
         raise ValueError("%s.auto_lane_change must be true or false" % label)
     result = {"auto_lane_change": auto_lane_change}
     for key, limits in CARLA_BEHAVIOR_LIMITS.items():
         result[key] = _bounded_number(behavior, key, limits, label)
+    for key, limits in CARLA_AGGRESSION_LIMITS.items():
+        # Old version-1/2 artifacts retain their original behavior: no new
+        # speed floor/cap and no hazard bypass unless explicitly specified.
+        result[key] = (_bounded_number(behavior, key, limits, label)
+                       if extended or key in behavior else 0.0)
+    ceiling = result["target_speed_ceiling_kmh"]
+    if ceiling and result["target_speed_floor_kmh"] > ceiling:
+        raise ValueError(label + " speed floor cannot exceed its speed ceiling")
     if not auto_lane_change and any(result[key] > 0.0 for key in (
             "random_left_lane_change_percentage",
             "random_right_lane_change_percentage", "keep_right_rule_percentage")):
@@ -283,8 +302,9 @@ def _validate_carla_behavior(behavior, label="behavior"):
 
 def validate_carla_variant(document):
     """Validate and normalize one standalone CARLA Traffic Manager variant."""
-    _validate_header(document, CARLA_PIPELINE, (1, CARLA_VARIANT_SCHEMA_VERSION))
-    scoped = document["schema_version"] == CARLA_VARIANT_SCHEMA_VERSION
+    _validate_header(document, CARLA_PIPELINE, (1, 2, CARLA_VARIANT_SCHEMA_VERSION))
+    scoped = document["schema_version"] >= 2
+    extended = document["schema_version"] >= 3
     manifest = document.get("manifest")
     if not isinstance(manifest, str) or not manifest.strip():
         raise ValueError("CARLA variant requires manifest")
@@ -318,7 +338,7 @@ def validate_carla_variant(document):
         raise ValueError("CARLA variant motion thresholds must be non-negative")
     simulation_seed = validate_carla_seed(
         document.get("simulation_seed"), "CARLA variant simulation_seed")
-    normalized_behavior = _validate_carla_behavior(document.get("behavior"))
+    normalized_behavior = _validate_carla_behavior(document.get("behavior"), extended=extended)
     normalized = copy.deepcopy(document)
     if scoped:
         if document.get("ego_mode") != "tm":
@@ -331,13 +351,30 @@ def validate_carla_variant(document):
         if selection["scope"] == CARLA_SCOPE and set(eligible) != set(moving):
             raise ValueError("surrounding variants must target every moving surrounding vehicle")
         baseline = _validate_carla_behavior(
-            document.get("baseline_behavior"), "baseline_behavior")
+            document.get("baseline_behavior"), "baseline_behavior", extended=extended)
         if document.get("kind") not in ("baseline", "sample"):
             raise ValueError("CARLA variant kind must be baseline or sample")
         if document["kind"] == "baseline" and normalized_behavior != baseline:
             raise ValueError("matched baseline behavior must equal baseline_behavior")
         normalized["baseline_behavior"] = baseline
         normalized["selection"]["moving_surrounding_track_ids"] = list(moving)
+    if extended:
+        if (baseline["desired_speed_scale"] != 1.0 or baseline["auto_lane_change"] or
+                any(baseline[key] != 0.0 for key in CARLA_AGGRESSION_LIMITS) or
+                any(baseline[key] != 0.0 for key in (
+                    "random_left_lane_change_percentage", "random_right_lane_change_percentage", "keep_right_rule_percentage"))):
+            raise ValueError("version-3 baseline_behavior must preserve normal speed, lane-change and hazard responses")
+        actor_behaviors = document.get("actor_behaviors")
+        if not isinstance(actor_behaviors, dict) or set(actor_behaviors) != set(eligible):
+            raise ValueError("actor_behaviors must contain exactly the selected perturbation targets")
+        normalized["actor_behaviors"] = {
+            actor_id: _validate_carla_behavior(profile, "actor_behaviors." + actor_id, extended=True)
+            for actor_id, profile in actor_behaviors.items()}
+        if document["kind"] == "baseline" and any(
+                profile != normalized["baseline_behavior"] for profile in normalized["actor_behaviors"].values()):
+            raise ValueError("matched baseline actor_behaviors must equal baseline_behavior")
+        if normalized_behavior != normalized["actor_behaviors"][eligible[0]]:
+            raise ValueError("behavior must describe the first selected actor; see actor_behaviors for all targets")
     normalized["selection"]["eligible_track_ids"] = list(eligible)
     normalized["selection"]["retained_vehicle_track_ids"] = list(retained)
     normalized["selection"]["minimum_track_distance_m"] = minimum_distance
@@ -350,7 +387,7 @@ def validate_carla_variant(document):
 def carla_behavior_for_track(document, track_id):
     """Choose a profile from a validated config without crossing target scopes.
 
-    Version 1 keeps its original surrounding-only semantics. Version 2 also
+    Version 1 keeps its original surrounding-only semantics. Versions 2/3 also
     explicitly configures every unaffected TM actor with the matched baseline.
     Static vehicles and pedestrians receive no TM behavior in either case.
     """
@@ -358,8 +395,10 @@ def carla_behavior_for_track(document, track_id):
         return None
     selection = document["selection"]
     if track_id in selection["eligible_track_ids"]:
+        if document["schema_version"] >= 3:
+            return document["actor_behaviors"][track_id]
         return document["behavior"]
-    if (document["schema_version"] == CARLA_VARIANT_SCHEMA_VERSION and
+    if (document["schema_version"] >= 2 and
             (track_id == "ego" or
              track_id in selection["moving_surrounding_track_ids"])):
         return document["baseline_behavior"]

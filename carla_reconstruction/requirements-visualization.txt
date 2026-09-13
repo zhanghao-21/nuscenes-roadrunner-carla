@@ -1,0 +1,4 @@
+# CARLA 0.9.15 Python API is needed only for capture; use the existing carla_0915 env.
+# Offline builders require Python 3.9+ and these two packages, not the nuScenes SDK.
+numpy>=1.21
+Pillow>=9.1

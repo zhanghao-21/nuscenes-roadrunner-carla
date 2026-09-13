@@ -36,9 +36,9 @@ def bundle():
 MANIFEST = {"scene": "test", "map": {"runtime_name": "TestMap"}}
 
 
-def generate(target, population=None):
+def generate(target, population=None, profile="aggressive"):
     args = generator.build_parser().parse_args([
-        "--manifest", "manifest.json", "--target", target, "--count", "3"])
+        "--manifest", "manifest.json", "--target", target, "--count", "3", "--profile", profile])
     written = {}
 
     def capture(path, value):
@@ -53,6 +53,12 @@ def generate(target, population=None):
             mock.patch.object(generator, "write_json", side_effect=capture):
         generator.run(args)
     return written
+
+
+def expected_speed(behavior, recorded_kmh=36.0):
+    return min(max(3.0, recorded_kmh * behavior["desired_speed_scale"],
+                   behavior.get("target_speed_floor_kmh", 0.0)),
+               behavior.get("target_speed_ceiling_kmh", 0.0) or float("inf"))
 
 
 class CarlaScopeGenerationTests(unittest.TestCase):
@@ -218,10 +224,10 @@ class CarlaScopeRuntimeTests(unittest.TestCase):
                 self.assertEqual(audit["unapplied_track_ids"], [])
                 self.assertEqual(set(audit["all_tm_actor_settings"]), {"ego", "moving", "later"})
                 for actor_id in ("ego", "moving", "later"):
-                    expected = doc["behavior"] if actor_id in selected else doc["baseline_behavior"]
+                    expected = carla_behavior_for_track(doc, actor_id)
                     actor = actors[actor_id]
                     self.assertTrue(spawn_calls[actor_id])
-                    tm.set_desired_speed.assert_any_call(actor, 36.0 * expected["desired_speed_scale"])
+                    tm.set_desired_speed.assert_any_call(actor, expected_speed(expected))
                     tm.distance_to_leading_vehicle.assert_any_call(actor, expected["leading_distance_m"])
                     tm.auto_lane_change.assert_any_call(actor, expected["auto_lane_change"])
                     tm.random_left_lanechange_percentage.assert_any_call(
@@ -231,7 +237,11 @@ class CarlaScopeRuntimeTests(unittest.TestCase):
                     tm.keep_right_rule_percentage.assert_any_call(actor, expected["keep_right_rule_percentage"])
                     for name in ("ignore_vehicles_percentage", "ignore_walkers_percentage",
                                  "ignore_lights_percentage", "ignore_signs_percentage"):
-                        getattr(tm, name).assert_any_call(actor, 0.0)
+                        getattr(tm, name).assert_any_call(actor, expected.get(name, 0.0))
+                    self.assertEqual(audit["all_tm_actor_settings"][actor_id]["behavior"]["desired_speed_kmh"],
+                                     expected_speed(expected))
+                    if actor_id not in selected:
+                        self.assertEqual(expected["ignore_vehicles_percentage"], 0.0)
                     self.assertEqual(metadata["actor_authority"][actor_id], "carla_tm")
                 self.assertEqual(tm.set_desired_speed.call_count, 3)
                 self.assertAlmostEqual(audit["all_tm_actor_settings"]["later"]["applied_at_s"], 0.1)

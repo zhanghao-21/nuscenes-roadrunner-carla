@@ -43,7 +43,7 @@ same-named `.xodr`. Re-run the local finalizer after updating this repository:
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File carla_reconstruction\finalize_decorated_map.ps1 ^
-  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  -Manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1100\scene_manifest.json ^
   -AllowCarlaWrite
 ```
 
@@ -59,7 +59,7 @@ installation with a read-only check:
 
 ```bat
 python carla_reconstruction\tools\check_closed_loop.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1100\scene_manifest.json
 ```
 
 ## 2. Run the CARLA Traffic Manager baseline
@@ -70,8 +70,10 @@ Recorded ego plus interactive surrounding vehicles (partially closed-loop):
 
 ```bat
 python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
   --ego-mode replay --replay-pedestrians
+
+--duration 60
 ```
 
 Traffic Manager ego plus interactive surrounding vehicles (fully interactive
@@ -79,9 +81,28 @@ baseline, but not an AV-under-test):
 
 ```bat
 python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
-  --ego-mode tm --replay-pedestrians
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --ego-mode tm --replay-pedestrians --prediction-risk --draw-predictions
 ```
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
+  --ego-mode tm --replay-pedestrians --prediction-risk --draw-predictions
+```
+
+
+Scene 0103 on its matching Decorated map automatically uses validated exit-lane
+anchors for the TM ego. This fixes an ambiguous raw-path match that selected a
+blocked left-turn exit instead of the recorded straight-through lane. It does
+not change surrounding traffic, safety checks, lane markings, other scenes, or
+the hybrid runner. No map/SUMO rebuild is needed. The same correction applies
+to CARLA-only baselines and variants without changing their behavior parameters.
+See [the scene-specific correction](../scene_overrides/README.md#scene-0103-traffic-manager-ego-intersection-route)
+for validation guards, audit output, normal TM continuation after the anchors,
+and the `--disable-0103-ego-route` diagnostic rollback option. Add
+`--duration 120` only if you want a longer observation window; duration alone
+does not fix the original stop.
 
 Use `--ego-mode external` when another CARLA client will find the actor whose
 `role_name` is `hero` and apply its own controls. Only this mode represents the
@@ -100,6 +121,375 @@ receive the recorded path, average recorded speed, collision
 avoidance, and configurable following distance. Add `--auto-lane-change` only
 when free lane-changing is desired; it is disabled by default to preserve the
 recorded route.
+
+### Optional CARLA-only HGT prediction and dashboard
+
+`run_tm_closed_loop.py` can use the same HGT prediction, inverse-TTC dashboard,
+and CARLA trajectory overlay as the hybrid runner. It is disabled by default;
+no SUMO preparation or map rebuild is needed. Start CARLA, then run this in the
+Anaconda Prompt to show **both the dashboard and predicted trajectories**:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --ego-mode tm --replay-pedestrians ^
+  --prediction-risk --draw-predictions
+```
+
+Choose the display options by changing the last line:
+
+| Display | Options |
+| --- | --- |
+| Dashboard and trajectory lines | `--prediction-risk --draw-predictions` |
+| Dashboard only | `--prediction-risk --no-draw-predictions` |
+| Trajectory lines only | `--prediction-risk --draw-predictions --no-prediction-dashboard` |
+| Disable all HGT prediction and displays | `--no-prediction-risk` |
+
+`--prediction-risk` enables the observer with the dashboard on and trajectory
+drawing off unless a configuration or display switch overrides these defaults.
+`--enable-prediction-risk` is an alias; `--disable-prediction-risk` is an alias
+for `--no-prediction-risk`. The independent switches are
+`--prediction-dashboard` / `--no-prediction-dashboard` and
+`--draw-predictions` / `--no-draw-predictions`. A positive display switch also
+enables prediction when no master switch was supplied. The explicit master
+`--no-prediction-risk` always wins, even if a display switch or configuration
+requests prediction.
+
+The same options work with other scenes and supported `--ego-mode tm`,
+`replay`, or `external` runs, and with CARLA-only `--variant-config` runs
+(which retain their existing ego-mode requirements). This addition is to the
+CARLA-only closed-loop runner, not the separate all-actor trajectory replay
+script.
+
+Only recorded **moving vehicle tracks** are prediction candidates. Parked,
+single-observation/static vehicles and pedestrians are excluded from HGT
+histories, dashboard rows, and predicted lines; they remain in the simulation
+and the existing safety metrics. A moving TM vehicle temporarily waiting at a
+traffic light or in a queue stays eligible: filtering uses its recorded motion
+classification, not its instantaneous speed.
+
+The shared defaults are the nearest 3 eligible vehicles within 50 m, 5 mode bars
+per dashboard row, and 3 trajectory modes drawn in CARLA. The right column shows
+each vehicle's worst-risk history. Worst and expected inverse TTC use all 20
+model modes, not just the displayed 5. The bundled model needs approximately
+1.5 s of history at the required 0.05 s simulation step, then predicts a 2.5 s
+horizon. Lines are drawn 1 m above each actor's current height. The observer
+reads actual post-tick CARLA states; it does not change vehicle controls, routes,
+traffic-light checks, or collision avoidance. Closing the dashboard window
+does not close CARLA or turn off the trajectory lines.
+
+If the optional dependencies are not already installed in your CARLA Python
+environment, install them there:
+
+```bat
+conda activate carla_0915
+python -m pip install -r carla_reconstruction\requirements-prediction.txt
+```
+
+Use `--prediction-device cpu` for CPU inference or select a supported Torch
+device such as `cuda`. Disabled runs do not load the optional prediction/GUI
+dependencies. A configuration, model, or observer failure prints a warning and
+disables the optional observer while the normal simulation continues; prediction
+status and errors are recorded in the run metadata.
+
+For advanced settings, `--prediction-config PATH` reads a JSON file containing
+the same `prediction_risk` object documented in the
+[hybrid dashboard section](#optional-hgt-prediction-risk-dashboard). An existing
+`hybrid_config.json` can be read directly: only its prediction settings are used,
+and it is not modified. Relative model paths are resolved beside that JSON file.
+CLI switches override the supplied settings. For example, to keep the dashboard
+but remove the default real-time pacing, save a separate settings file containing:
+
+```json
+{
+  "prediction_risk": {
+    "enabled": true,
+    "pace_realtime": false
+  }
+}
+```
+
+Then add `--prediction-config PATH_TO_THAT_FILE.json` to the run command.
+Normally the observer paces execution toward real time for readable displays;
+CPU inference or rendering may still make it slower than real time. It never
+adds a second tick owner or skips simulation steps. A non-0.05 s simulation step
+is incompatible with the bundled model cadence and disables prediction with a
+warning; it does not silently reinterpret the model's time horizon.
+
+
+## 6. Generate separate CARLA-only ego and surrounding perturbations
+
+For separate **rain** and **obstacle-ahead** cases with simulation-only six-camera
+and LiDAR figures/GIFs, see
+[the continuous TM visualization workflow](../visualization/README.md#continuous-traffic-manager-simulation-only-rain-and-obstacle-cases).
+The normal TM runner accepts `--weather rain`, or
+`--weather clear --obstacle-distance 12`, together with `--build-sim-panels`
+and a fresh `--output` directory. These environment cases also work without
+behavior-variant generation; use `--ego-mode tm` for the sensor visualization.
+
+This pipeline uses CARLA Traffic Manager for the ego and every classified
+moving surrounding vehicle. Recorded parked and single-observation vehicles
+remain fixed CARLA actors. SUMO preparation is not required. Use the same
+imported/decorated map and scene manifest as the normal CARLA-only run.
+
+The generator provides two independent experiment families:
+
+| Generator option | Ego TM parameters | Moving surrounding TM parameters |
+|---|---|---|
+| `--target ego` | Sampled perturbation | Matched baseline |
+| `--target surrounding` | Matched baseline | Sampled perturbation |
+
+Both groups remain interactive in both cases: unchanged parameters do not mean
+unchanged trajectories. For example, baseline surrounding vehicles may brake
+in response to a perturbed ego. Static actors are never perturbation targets.
+The `aggressive` and `stress` profiles sample different, reproducible settings
+for each selected driver, including vehicles that spawn later. This creates
+relative-speed and following differences instead of scaling every surrounding
+vehicle identically. `mild` retains the previous shared-profile sampling.
+
+**New default: `--profile aggressive`.** The same generation command now makes
+stronger candidates for every scene. `--profile stress` is the most direct
+collision-seeking setting; it disables the selected drivers' TM vehicle-hazard
+response and light/sign compliance, but does not disable physical collisions.
+`--profile mild` restores the previous mild parameter ranges. Neither the
+normal no-variant run nor the matched baseline becomes aggressive.
+
+Generate 20 ego-only variants:
+
+```bat
+python carla_reconstruction\tools\generate_carla_safety_variants.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --target ego ^
+  --count 20
+```
+
+```bat
+python carla_reconstruction\tools\generate_carla_safety_variants.py ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1100\scene_manifest.json ^
+  --target ego ^
+  --count 20
+```
+
+
+
+Generate 20 surrounding-only variants:
+
+```bat
+python carla_reconstruction\tools\generate_carla_safety_variants.py ^
+  --manifest carla_reconstruction\generated\boston-seaport_scene-0103\scene_manifest.json ^
+  --target surrounding ^
+  --count 20
+```
+
+
+```bat
+python carla_reconstruction\tools\generate_carla_safety_variants.py ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1100\scene_manifest.json ^
+  --target surrounding ^
+  --count 20
+```
+
+
+The default output folders are separate; replace the manifest to use another
+scene such as `boston-seaport_scene-0757`:
+
+```text
+generated/<scene>/carla_safety_variants/
+  ego/
+    aggressive/baseline.json, variant_000.json ... variant_019.json, index.json
+    stress/...
+    mild/...
+  surrounding/
+    aggressive/baseline.json, variant_000.json ... variant_019.json, index.json
+    stress/...
+    mild/...
+```
+
+`--target` defaults to `surrounding`; `--profile` defaults to `aggressive`.
+`--output` selects an exact output folder;
+an existing experiment from a different target, profile, scene, or schema version is
+rejected to prevent overwriting the other experiment family. Existing legacy
+files directly inside `carla_safety_variants`, `ego/`, and `surrounding/` are
+preserved and keep their old behavior. **Regenerate and run the new file inside
+`aggressive/` or `stress/`; opening an old `variant_001.json` does not upgrade it.**
+
+Start the CARLA server, then run the matched ego-case baseline:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\ego\aggressive\baseline.json ^
+  --ego-mode tm --replay-pedestrians
+```
+
+
+
+
+Run an ego-only perturbation:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\ego\aggressive\variant_001.json ^
+  --ego-mode tm --replay-pedestrians
+```
+
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1100\carla_safety_variants\ego\aggressive\variant_001.json ^
+  --ego-mode tm --replay-pedestrians --prediction-risk --draw-predictions
+```
+
+Run the matched surrounding-case baseline:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1094\carla_safety_variants\surrounding\aggressive\baseline.json ^
+  --ego-mode tm --replay-pedestrians
+```
+
+Run a surrounding-only perturbation:
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\boston-seaport_scene-0103\carla_safety_variants\surrounding\aggressive\variant_001.json ^
+  --ego-mode tm --replay-pedestrians
+```
+
+```bat
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1100\carla_safety_variants\surrounding\aggressive\variant_015.json ^
+  --ego-mode tm --replay-pedestrians --prediction-risk --draw-predictions
+```
+
+
+For the strongest stress test, generate the desired family explicitly:
+
+```bat
+python carla_reconstruction\tools\generate_carla_safety_variants.py ^
+  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1100\scene_manifest.json ^
+  --target surrounding --profile stress --count 20
+
+python carla_reconstruction\runtime\run_tm_closed_loop.py ^
+  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1100\carla_safety_variants\surrounding\aggressive\variant_000.json ^
+  --ego-mode tm --replay-pedestrians --duration 20 ^
+  --prediction-risk --draw-predictions
+```
+
+For ego-only stress tests, change `--target surrounding` to `--target ego` and
+use the resulting `ego\stress\variant_000.json` when running. Replace the
+manifest/scene folder to use any other reconstructed scenario. `--duration 30`
+gives more observation time but does not extend the imported map; TM may remove
+an actor that runs out of drivable road, including the ego.
+
+New configs use CARLA variant schema version 3 and specify `ego_mode: tm`.
+Omitting `--ego-mode` therefore selects TM automatically; explicitly requesting
+`replay` or `external` fails before connecting to CARLA. Old schema-2 configs
+remain readable with their previous scoped behavior and zero new hazard-ignore
+settings/speed floors. Old schema-1
+surrounding-only configs remain readable with their original ego-mode behavior
+(default replay). Regenerate them with the commands above for these new
+all-TM experiments. Without a variant config, the runner still defaults to a
+replay ego.
+
+Each family contains a matched baseline and deterministic Latin-hypercube
+samples. With identical generator options, the two families have identical
+baseline driving parameters and the same simulation seed. Preset ranges are:
+
+| Generator option | Mild | Aggressive (default) | Stress |
+|---|---|---|---|
+| `--desired-speed-scale` | `0.75,1.35` | `1.4,2.6` | `2.0,3.5` |
+| `--leading-distance` (m) | `0.5,4.0` | `0.2,0.8` | `0,0.2` |
+| `--random-left-lane-change` (%) | `0,30` | `40,80` | `70,100` |
+| `--random-right-lane-change` (%) | `0,30` | `40,80` | `70,100` |
+| `--keep-right` (%) | `0,30` | `0,0` | `0,0` |
+| `--target-speed-floor` (km/h) | `0,0` | `30,45` | `45,65` |
+| `--maximum-speed-kmh` (target cap) | `0` (off) | `80` | `100` |
+| `--ignore-vehicles` (%) | `0,0` | `70,100` | `100,100` |
+| `--ignore-lights` (%) | `0,0` | `80,100` | `100,100` |
+| `--ignore-signs` (%) | `0,0` | `80,100` | `100,100` |
+
+Explicit range flags override the selected preset; for example,
+`--profile aggressive --ignore-vehicles 0,0 --ignore-lights 0,0 --ignore-signs 0,0`
+keeps TM's vehicle/rule responses while retaining higher target speeds and
+shorter gaps. Keep-right bias is zero for the stronger profiles so the same
+settings do not impose a rightward preference on Singapore left-driving maps.
+
+Sampled targets enable automatic lane changing. The matched baseline and all
+unperturbed TM actors use speed scale 1.0, following distance 2.5 m (set with
+`--baseline-leading-distance` at generation), disabled automatic lane changes,
+and zero lane-change percentages. Their vehicle/light/sign/walker ignore values
+stay zero, with no added speed floor or cap. These explicit saved profiles take priority
+over the runner's `--leading-distance` and `--auto-lane-change` options.
+`--seed` changes parameter sampling; `--simulation-seed` records the TM seed
+used by every run. Keep runtime timing, path spacing, speed floor, seed, and
+pedestrian options identical when comparing baseline and variants.
+
+Target speed is `max(recorded_mean_speed * scale, runner_minimum, profile_floor)`,
+then limited by the profile's positive target cap. The floor keeps long recorded
+stops from diluting the perturbation into a crawling-speed target. These are
+desired speeds, not forced velocities: braking, curvature, acceleration and
+contacts still affect actual speed. No actors are teleported into collisions.
+
+The ignore percentages are TM hazard-decision settings, **not probabilities of
+a crash**. Even a high percentage below 100 can still cause frequent braking
+because TM checks repeatedly. Stress uses 100 to remove those selected-driver
+vehicle/light/sign responses consistently. Collision physics stays enabled;
+TM's walker-ignore setting remains zero. This does not guarantee pedestrian
+safety when vehicles are driven aggressively. All settings are for simulated
+stress testing, not realistic traffic calibration or real-vehicle control.
+
+CARLA 0.9.15 TM exposes no per-vehicle IDM-style `tau`, acceleration, or
+deceleration setter. Lane-change requests still depend on the imported lane
+graph, available adjacent lanes and TM constraints; raising the percentages
+cannot create missing lane connections. Existing data-seeded routes are kept.
+These are candidate risk scenarios, not guaranteed collisions or guaranteed
+increases in risk for every scene/seed. Pedestrians, when requested, follow
+recorded trajectories rather than TM vehicle control.
+
+`--variant-config` supplies the manifest, motion thresholds, ego mode, and TM
+seed. An explicit `--manifest` must resolve to the same file. The runner checks
+the complete retained surrounding population and moving classification before
+connecting, including for ego-only experiments. A changed `--max-vehicles` or
+motion threshold that changes either set is rejected.
+
+`summary.json` and `run_config.json` record `carla_behavior_variant.scope`,
+eligible/applied/unapplied target IDs, and `all_tm_actor_settings`. The latter
+includes the ego and every successfully configured moving surrounding actor,
+its `profile_role` (`target` or `baseline`), CARLA actor ID, requested resolved
+behavior, and application time. The `target` role denotes the selected group
+even in a baseline run. Unspawned targets remain in `unapplied_track_ids`.
+Version 3 stores every selected driver's explicit settings in `actor_behaviors`;
+the shorter `behavior`/`scenario.parameters` block describes only the first
+selected actor. Untargeted movers use `baseline_behavior`, and static actors
+remain excluded. The generation index records the preset, sampled bounds, cap
+and each variant's complete per-actor settings.
+These records audit API application; TM does not expose SUMO-style read-back
+for all of these parameters. Configuration failures are reported as errors
+and trigger actor cleanup. Compare the matching family's `baseline.json`
+against its variants using the existing distance, TTC, and collision metrics.
+The existing metrics are ego-centric: background-to-background collisions are
+not counted by the ego collision sensor. Contact reports may repeat during one
+impact. The line-of-sight/circular-clearance TTC surrogate can reach zero even
+without a physical collision, so do not label a near miss from TTC alone.
+
+A local scene-1100 check (30 s maximum, seed 103) recorded no ego contacts in the
+baseline, vehicle contacts in ego `aggressive/variant_000.json` and
+`stress/variant_000.json`, and no ego contacts in the two corresponding
+surrounding-only samples. Some faster ego runs ended with `ego_destroyed` before
+30 s; no continuation was forced. These checks demonstrate stronger behavior,
+not a collision-rate estimate.
+
+Rerunning either generator with a smaller `--count` removes only obsolete files
+whose names match its own `variant_NUMBER.json` pattern; unrelated files in the
+output directory are left untouched.
+
+The old selected-critical-actor generator is retired. For scripted callers,
+`generate_safety_variants.py` remains only as a dispatcher with the explicit
+`sumo-hybrid` and `carla-only` pipeline names; the two controller-specific tools
+above are preferred.
+
+
+
 
 ## 3. Prepare SUMO from the same scene
 
@@ -675,160 +1065,6 @@ places. The runtime accepts only that rounding (an absolute tolerance of
 on a larger mismatch. The exact reported effective values remain in the run
 summary.
 
-## 6. Generate separate CARLA-only ego and surrounding perturbations
-
-This pipeline uses CARLA Traffic Manager for the ego and every classified
-moving surrounding vehicle. Recorded parked and single-observation vehicles
-remain fixed CARLA actors. SUMO preparation is not required. Use the same
-imported/decorated map and scene manifest as the normal CARLA-only run.
-
-The generator provides two independent experiment families:
-
-| Generator option | Ego TM parameters | Moving surrounding TM parameters |
-|---|---|---|
-| `--target ego` | Sampled perturbation | Matched baseline |
-| `--target surrounding` | Matched baseline | Sampled perturbation |
-
-Both groups remain interactive in both cases: unchanged parameters do not mean
-unchanged trajectories. For example, baseline surrounding vehicles may brake
-in response to a perturbed ego. Static actors are never perturbation targets.
-The surrounding case applies the same sampled profile to all moving
-surrounding tracks, including those that spawn later.
-
-Generate 20 ego-only variants:
-
-```bat
-python carla_reconstruction\tools\generate_carla_safety_variants.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
-  --target ego ^
-  --count 20
-```
-
-Generate 20 surrounding-only variants:
-
-```bat
-python carla_reconstruction\tools\generate_carla_safety_variants.py ^
-  --manifest carla_reconstruction\generated\singapore-hollandvillage_scene-1094\scene_manifest.json ^
-  --target surrounding ^
-  --count 20
-```
-
-The default output folders are separate; replace the manifest to use another
-scene such as `boston-seaport_scene-0757`:
-
-```text
-generated/<scene>/carla_safety_variants/
-  ego/
-    baseline.json
-    variant_000.json ... variant_019.json
-    index.json
-  surrounding/
-    baseline.json
-    variant_000.json ... variant_019.json
-    index.json
-```
-
-`--target` defaults to `surrounding`. `--output` selects an exact output folder;
-an existing experiment from a different target, scene, or schema version is
-rejected to prevent overwriting the other experiment family. Existing legacy
-files directly inside `carla_safety_variants` are preserved.
-
-Start the CARLA server, then run the matched ego-case baseline:
-
-```bat
-python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1094\carla_safety_variants\ego\baseline.json ^
-  --ego-mode tm --replay-pedestrians
-```
-
-Run an ego-only perturbation:
-
-```bat
-python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1094\carla_safety_variants\ego\variant_001.json ^
-  --ego-mode tm --replay-pedestrians
-```
-
-Run the matched surrounding-case baseline:
-
-```bat
-python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1094\carla_safety_variants\surrounding\baseline.json ^
-  --ego-mode tm --replay-pedestrians
-```
-
-Run a surrounding-only perturbation:
-
-```bat
-python carla_reconstruction\runtime\run_tm_closed_loop.py ^
-  --variant-config carla_reconstruction\generated\singapore-hollandvillage_scene-1094\carla_safety_variants\surrounding\variant_001.json ^
-  --ego-mode tm --replay-pedestrians
-```
-
-New configs use CARLA variant schema version 2 and specify `ego_mode: tm`.
-Omitting `--ego-mode` therefore selects TM automatically; explicitly requesting
-`replay` or `external` fails before connecting to CARLA. Old schema-1
-surrounding-only configs remain readable with their original ego-mode behavior
-(default replay). Regenerate them with the commands above for these new
-all-TM experiments. Without a variant config, the runner still defaults to a
-replay ego.
-
-Each family contains a matched baseline and deterministic Latin-hypercube
-samples. With identical generator options, the two families have identical
-baseline driving parameters and the same simulation seed. The default sampled
-parameters are:
-
-| Generator option | Range | Meaning |
-|---|---|---|
-| `--desired-speed-scale` | `0.75,1.35` | Multiplier of each track's recorded mean speed |
-| `--leading-distance` | `0.5,4.0` | Following distance in metres |
-| `--random-left-lane-change` | `0,30` | Random left lane-change percentage |
-| `--random-right-lane-change` | `0,30` | Random right lane-change percentage |
-| `--keep-right` | `0,30` | Keep-right rule percentage |
-
-Sampled targets enable automatic lane changing. The matched baseline and all
-unperturbed TM actors use speed scale 1.0, following distance 2.5 m (set with
-`--baseline-leading-distance` at generation), disabled automatic lane changes,
-and zero lane-change percentages. These explicit saved profiles take priority
-over the runner's `--leading-distance` and `--auto-lane-change` options.
-`--seed` changes parameter sampling; `--simulation-seed` records the TM seed
-used by every run. Keep runtime timing, path spacing, speed floor, seed, and
-pedestrian options identical when comparing baseline and variants.
-
-CARLA 0.9.15 TM exposes no per-vehicle IDM-style `tau`, acceleration, or
-deceleration setter. The pipeline varies the supported settings above.
-Ignore-vehicle, ignore-walker, ignore-light, and ignore-sign values remain zero.
-TM speed targets still use each recorded track's whole-track mean, with the
-runner's 3 km/h default floor; long recorded stops can therefore dilute speed
-targets. This feature does not change the existing speed/path controller.
-These are candidate risk scenarios, not guaranteed collisions. Pedestrians,
-when requested, follow recorded trajectories rather than TM vehicle control.
-
-`--variant-config` supplies the manifest, motion thresholds, ego mode, and TM
-seed. An explicit `--manifest` must resolve to the same file. The runner checks
-the complete retained surrounding population and moving classification before
-connecting, including for ego-only experiments. A changed `--max-vehicles` or
-motion threshold that changes either set is rejected.
-
-`summary.json` and `run_config.json` record `carla_behavior_variant.scope`,
-eligible/applied/unapplied target IDs, and `all_tm_actor_settings`. The latter
-includes the ego and every successfully configured moving surrounding actor,
-its `profile_role` (`target` or `baseline`), CARLA actor ID, requested resolved
-behavior, and application time. The `target` role denotes the selected group
-even in a baseline run. Unspawned targets remain in `unapplied_track_ids`.
-These records audit API application; TM does not expose SUMO-style read-back
-for all of these parameters. Configuration failures are reported as errors
-and trigger actor cleanup. Compare the matching family's `baseline.json`
-against its variants using the existing distance, TTC, and collision metrics.
-
-Rerunning either generator with a smaller `--count` removes only obsolete files
-whose names match its own `variant_NUMBER.json` pattern; unrelated files in the
-output directory are left untouched.
-
-The old selected-critical-actor generator is retired. For scripted callers,
-`generate_safety_variants.py` remains only as a dispatcher with the explicit
-`sumo-hybrid` and `carla-only` pipeline names; the two controller-specific tools
-above are preferred.
 
 ## Run outputs and current boundary
 
